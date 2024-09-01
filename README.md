@@ -23,7 +23,7 @@ Before using this extension, ensure you have the following:
 
 To use this extension, you'll need to obtain an API key from SmartThings. Follow these steps:
 
-1. **Log in to SmartThings**: Go to the [SmartThings Developer Workspace](https://smartthings.developer.samsung.com/) and sign in with your Samsung account.
+1. **Log in to SmartThings**: Go to the [SmartThings Developer Workspace](https://account.smartthings.com/tokens) and sign in with your Samsung account.
 
 2. **Create a new API token**: Navigate to the "My SmartApps" section and select your app or create a new one. Generate an API token from the "OAuth" section of your app's settings.
 
@@ -33,7 +33,7 @@ To use this extension, you'll need to obtain an API key from SmartThings. Follow
 
 Each location (e.g., home, office) in SmartThings has a unique location ID. Follow these steps to find the location ID:
 
-1. **Log in to SmartThings**: Go to the [SmartThings website](https://www.smartthings.com/) and log in with your Samsung account.
+1. **Log in to SmartThings**: Go to the [My SmartThings website](https://my.smartthings.com/advanced/locations) and log in with your Samsung account.
 
 2. **Find your location**: Navigate to the "Devices" or "Settings" section and select the location you want to manage with this extension.
 
@@ -49,7 +49,7 @@ To configure the SmartThings API token (`apiToken`) and location ID (`locationId
 
 1. **Open Raycast**: Launch Raycast on your macOS system.
 
-2. **Access Preferences**: Type `/smartthings preferences` into the Raycast command bar and select "Preferences" from the dropdown menu.
+2. **Access Preferences**: Type `Extensions` into the Raycast command bar and search for "SmartThings Connector" in the list.
 
 3. **Enter API Token**: In the preferences window, enter your SmartThings API token (`apiToken`). This token is required for authenticating API requests to SmartThings.
 
@@ -61,8 +61,4 @@ Now, the extension is configured to use your specified API token and location ID
 
 ## Feedback
 
-Your feedback is highly appreciated! If you encounter any issues or have suggestions for improvements, please [open an issue](https://github.com/your/repository/issues) on GitHub.
-
----
-
-This template provides a structured guide for users to set up and use your SmartThings Raycast extension effectively. Replace placeholders like `[SmartThings Developer Workspace](https://smartthings.developer.samsung.com/)` and `[open an issue](https://github.com/your/repository/issues)` with actual links specific to your SmartThings app and GitHub repository. Adjust paths and instructions according to your project's actual setup and needs.
+Your feedback is highly appreciated! If you encounter any issues or have suggestions for improvements, please [open an issue](https://github.com/4IngoJ/SmartthingsConnector_for_Raycast) on GitHub.
