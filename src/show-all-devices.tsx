@@ -18,9 +18,27 @@ const ICON_URLS = {
   other: 'https://api.iconify.design/material-symbols-light/devices-other-rounded.svg',
 };
 
+// Funktion, um die Icon-URL basierend auf der Kategorie und Größe zu erhalten
+const getIconUrl = (category: any, size = 1) => {
+  if (!category) {
+    console.warn('Category is undefined or null');
+    return ICON_URLS['other'];
+  }
+
+  const lowerCategory: keyof typeof ICON_URLS = category.toLowerCase() as keyof typeof ICON_URLS;
+  const iconUrl = ICON_URLS[lowerCategory] || ICON_URLS['other'];
+
+  // Abfrageparameter anhängen, um das Bild zu skalieren
+  const scaledUrl = `${iconUrl}?size=${size * 100}%`;
+
+  console.log(`Icon URL for category '${category}': ${scaledUrl}`);
+
+  return scaledUrl;
+};
+
 export default function ShowAllDevices() {
-  const [devices, setDevices] = useState([]);
-  const [filteredDevices, setFilteredDevices] = useState([]);
+  const [devices, setDevices] = useState<{ [key: string]: any[] }>({});
+  const [filteredDevices, setFilteredDevices] = useState<{ [key: string]: any[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const { push } = useNavigation();
@@ -41,7 +59,7 @@ export default function ShowAllDevices() {
         const devicesData = response.data.items;
 
         // Sort devices by the last updated timestamp in descending order
-        devicesData.sort((a, b) => {
+        devicesData.sort((a: any, b: any) => {
           const aTimestamp = new Date(a.components[0].capabilities[0].timestamp).getTime();
           const bTimestamp = new Date(b.components[0].capabilities[0].timestamp).getTime();
           return bTimestamp - aTimestamp;
@@ -52,8 +70,8 @@ export default function ShowAllDevices() {
 
         // Sort categories based on the latest update date of devices within each category
         const sortedCategories = Object.keys(categorizedDevices).sort((categoryA, categoryB) => {
-          const latestDeviceA = categorizedDevices[categoryA][0];
-          const latestDeviceB = categorizedDevices[categoryB][0];
+          const latestDeviceA = (categorizedDevices as any)[categoryA][0];
+          const latestDeviceB = (categorizedDevices as any)[categoryB][0];
           if (!latestDeviceA || !latestDeviceB) return 0;
           const timestampA = new Date(latestDeviceA.components[0].capabilities[0].timestamp).getTime();
           const timestampB = new Date(latestDeviceB.components[0].capabilities[0].timestamp).getTime();
@@ -61,16 +79,17 @@ export default function ShowAllDevices() {
         });
 
         // Prepare sorted categorized devices
-        const sortedDevices = {};
-        sortedCategories.forEach(category => {
-          sortedDevices[category] = categorizedDevices[category];
+        const sortedDevices: { [key: string]: any[] } = {}; // Add type annotation
+
+        sortedCategories.forEach((category: string) => {
+          sortedDevices[category] = (categorizedDevices as { [key: string]: any[] })[category];
         });
 
-        setDevices(sortedDevices);
-        setFilteredDevices(sortedDevices);
+        setDevices(sortedDevices as any);
+        setFilteredDevices(sortedDevices as any);
         setIsLoading(false);
       } catch (error) {
-        showToast(ToastStyle.Failure, 'Failed to fetch devices', error.message);
+        showToast(ToastStyle.Failure, 'Failed to fetch devices', (error as Error).message);
         setIsLoading(false);
       }
     }
@@ -79,16 +98,16 @@ export default function ShowAllDevices() {
   }, []); // Empty dependency array ensures this effect runs only once after initial render
 
   // Function to categorize devices based on their categories
-  const categorizeDevices = (devices) => {
+  const categorizeDevices = (devices: any) => {
     const categorized = {};
 
-    devices.forEach(device => {
-      device.components.forEach(component => {
-        component.categories.forEach(category => {
-          if (!categorized[category.name]) {
-            categorized[category.name] = [];
+    devices.forEach((device: any) => {
+      device.components.forEach((component: any) => {
+        component.categories.forEach((category: any) => {
+          if (!(category.name in categorized)) {
+            (categorized as { [key: string]: any[] })[category.name] = [];
           }
-          categorized[category.name].push(device);
+          (categorized as { [key: string]: any[] })[category.name].push(device);
         });
       });
     });
@@ -97,7 +116,7 @@ export default function ShowAllDevices() {
   };
 
   // Function to filter devices based on search text
-  const filterDevices = (text) => {
+  const filterDevices = (text: any) => {
     if (!text.trim()) {
       setFilteredDevices(devices);
       return;
@@ -106,53 +125,34 @@ export default function ShowAllDevices() {
     const lowerText = text.trim().toLowerCase();
     const filtered = {};
 
-    Object.keys(devices).forEach(category => {
-      const filteredCategoryDevices = devices[category].filter(device =>
+    Object.keys(devices).forEach((category: string) => {
+      const filteredCategoryDevices = devices[category].filter((device: any) =>
         (device.label && device.label.toLowerCase().includes(lowerText)) ||
-        device.components.some(component =>
-          component.categories.some(category => category.name.toLowerCase().includes(lowerText))
+        device.components.some((component: any) =>
+          component.categories.some((category: any) => category.name.toLowerCase().includes(lowerText))
         )
       );
 
       if (filteredCategoryDevices.length > 0) {
-        filtered[category] = filteredCategoryDevices;
+        (filtered as { [key: string]: any[] })[category] = filteredCategoryDevices;
       }
     });
 
-    setFilteredDevices(filtered);
+    setFilteredDevices(filtered as any);
   };
 
   // Handler for search bar text change
-  const handleSearchTextChange = (text) => {
+  const handleSearchTextChange = (text: any) => {
     setSearchText(text);
     filterDevices(text);
   };
 
   // Function to handle device selection and navigation
-  const handleDeviceSelection = (deviceId) => {
-    const device = Object.values(devices).flat().find(device => device.deviceId === deviceId);
+  const handleDeviceSelection = (deviceId: any) => {
+    const device = Object.values(devices).flat().find((device: any) => device.deviceId === deviceId);
     if (device) {
       push(<DeviceDetail device={device} />);
     }
-  };
-
-  // Function to get icon URL based on category and size
-  // Function to get icon URL based on category and size
-  const getIconUrl = (category, size = 1) => {
-    if (!category) {
-      console.warn('Category is undefined or null');
-      return ICON_URLS['other'];
-    }
-
-    const lowerCategory = category.toLowerCase();
-    const iconUrl = ICON_URLS[lowerCategory] || ICON_URLS['other'];
-
-    // Append query parameter to scale the image
-    const scaledUrl = `${iconUrl}?size=${size * 100}%`;
-
-    console.log(`Icon URL for category '${category}': ${scaledUrl}`);
-
-    return scaledUrl;
   };
 
   return (
@@ -165,7 +165,7 @@ export default function ShowAllDevices() {
     >
       {Object.keys(filteredDevices).map((category, index) => (
         <Grid.Section key={category} title={category}>
-          {filteredDevices[category].map((device, idx) => (
+          {filteredDevices[category].map((device: any, idx: any) => (
             <Grid.Item
               key={`${device.deviceId}-${idx}`} // Ensure unique keys
               title={device.label || 'Unnamed Device'}
@@ -179,7 +179,6 @@ export default function ShowAllDevices() {
                   />
                 </ActionPanel>
               }
-              detail={<DetailComponent device={device} />} // Pass device to DetailComponent
             />
           ))}
         </Grid.Section>
@@ -195,23 +194,23 @@ export default function ShowAllDevices() {
   );
 }
 
-// Component for displaying device details
-function DetailComponent({ device }) {
+// Komponente zum Anzeigen der Gerätedetails
+function DetailComponent({ device }: { device: any }) {
   return (
-    <Grid.Item.Detail markdown={`### Device Details\n\n**Label:** ${device.label}\n\n**Device Type:** ${device.deviceTypeName}`} />
+    <Grid.Item
+      title={device.label || 'Unnamed Device'}
+      subtitle={device.deviceTypeName}
+      content={{ source: getIconUrl(device.deviceTypeName, 0.75) }} // Icon für Detailansicht hinzufügen
+    />
   );
 }
 
-// Component for rendering device detail view
-function DeviceDetail({ device }) {
+// Komponente zum Rendern der Gerätedetailansicht
+function DeviceDetail({ device }: { device: any }) {
   return (
     <Grid>
       <Grid.Section>
-        <Grid.Item
-          title={device.label || 'Unnamed Device'}
-          subtitle={device.deviceTypeName}
-          detail={<DetailComponent device={device} />}
-        />
+        <DetailComponent device={device} />
       </Grid.Section>
     </Grid>
   );

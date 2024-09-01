@@ -19,7 +19,7 @@ export async function fetchLocationModes() {
     console.log('API Response:', response.data); // Log the response data
 
     return response.data.items; // Assuming API response has 'items' array containing modes
-  } catch (error) {
+  } catch (error: any) { // Specify the type of error as 'any'
     throw new Error(`Failed to fetch location modes: ${error.message}`);
   }
 }

@@ -7,6 +7,7 @@
   "author": "Ingo J",
   "categories": ["Other"],
   "license": "MIT",
+  "version": "1.0.0",
   "commands": [
     {
       "name": "show-lights",

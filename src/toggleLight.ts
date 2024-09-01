@@ -31,7 +31,7 @@ export async function toggleLight(deviceId: string, currentStatus: string) {
 
     return newStatus;
   } catch (error) {
-    console.error('Failed to toggle light:', error.message);
+    console.error('Failed to toggle light:', (error as Error).message); // Typ 'Error' explizit angeben
     throw error;
   }
 }

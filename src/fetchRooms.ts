@@ -16,22 +16,26 @@ export async function fetchRooms() {
     console.log('Rooms payload:', response.data);
     return response.data.items;
   } catch (error) {
-    console.error('Failed to fetch rooms:', error.message);
+    if (error instanceof Error) {
+      console.error('Failed to fetch rooms:', error.message);
+    } else {
+      console.error('Failed to fetch rooms:', error);
+    }
     throw error;
   }
 }
 
-export async function fetchDevicesInRoom(roomId) {
+export async function fetchDevicesInRoom(roomId: any) { // Typ 'any' explizit angeben
   try {
     const response = await axios.get(`${SMARTTHINGS_API_URL}/devices`, {
       headers: {
         'Authorization': `Bearer ${SMARTTHINGS_API_TOKEN}`
       }
     });
-    const devices = response.data.items.filter(device => device.roomId === roomId);
+    const devices = response.data.items.filter((device: any) => device.roomId === roomId); // Typ 'any' explizit angeben
     return devices;
   } catch (error) {
-    console.error('Failed to fetch devices:', error.message);
+    console.error('Failed to fetch devices:', (error as Error).message); // Typ 'Error' explizit angeben
     throw error;
   }
 }

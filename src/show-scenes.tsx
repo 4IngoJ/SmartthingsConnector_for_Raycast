@@ -23,7 +23,7 @@ export default function ShowScenes() {
         setScenes(response.data.items);
         setIsLoading(false);
       } catch (error) {
-        showToast(ToastStyle.Failure, 'Failed to fetch scenes', error.message);
+        showToast(ToastStyle.Failure, 'Failed to fetch scenes', (error as Error).message);
         setIsLoading(false);
       }
     }
@@ -31,7 +31,7 @@ export default function ShowScenes() {
     fetchScenes();
   }, []);
 
-  const executeScene = async (sceneId) => {
+  const executeScene = async (sceneId: any) => {
     try {
       await axios.post(`https://api.smartthings.com/v1/scenes/${sceneId}/execute`, null, {
         headers: {
@@ -40,11 +40,11 @@ export default function ShowScenes() {
       });
       showToast(ToastStyle.Success, 'Scene Executed Successfully');
     } catch (error) {
-      showToast(ToastStyle.Failure, 'Failed to execute scene', error.message);
+      showToast(ToastStyle.Failure, 'Failed to execute scene', (error as Error).message);
     }
   };
 
-  const formatDate = (timestamp) => {
+  const formatDate = (timestamp: any) => {
     if (!timestamp) return 'Never executed';
     const date = new Date(timestamp);
     return date.toLocaleString(); // Format the date as a readable string
@@ -52,7 +52,7 @@ export default function ShowScenes() {
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search Scenes...">
-      {scenes.map((scene) => (
+      {scenes.map((scene: any) => (
         <List.Item
           key={scene.sceneId}
           title={scene.sceneName || 'Unnamed Scene'}

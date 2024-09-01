@@ -20,18 +20,18 @@ export default function ShowLocationMode() {
           return;
         }
 
-        const currentModeData = await fetchCurrentLocationMode(locId);
+        const currentModeData = await fetchCurrentLocationMode(); // Argument entfernt
         if (currentModeData && currentModeData.mode && currentModeData.mode.name) {
           setCurrentMode(currentModeData.mode.name); // Set current mode name
         } else {
           showToast(ToastStyle.Failure, "Current mode name not available");
         }
 
-        const availableModes = await fetchLocationModes(locId);
-        setModes(availableModes.map(mode => mode.name));
+        const availableModes = await fetchLocationModes(); // Argument entfernt
+        setModes(availableModes.map((mode: any) => mode.name)); // Typ 'any' explizit angeben
         setIsLoading(false);
       } catch (error) {
-        showToast(ToastStyle.Failure, "Failed to fetch data", error.message);
+        showToast(ToastStyle.Failure, "Failed to fetch data", (error as Error).message); // Typ 'Error' explizit angeben
         setIsLoading(false);
       }
     }
@@ -44,11 +44,11 @@ export default function ShowLocationMode() {
     try {
       if (!locationId) return;
 
-      const modes = await fetchLocationModes(locationId);
-      const newMode = modes.find(mode => mode.name.toLowerCase() === newModeName.toLowerCase());
+      const modes = await fetchLocationModes(); // Argument entfernt
+      const newMode = modes.find((mode: any) => mode.name.toLowerCase() === newModeName.toLowerCase()); // Typ 'any' explizit angeben
       if (newMode) {
-        await switchLocationMode(locationId, newMode.id);
-        const updatedMode = await fetchCurrentLocationMode(locationId);
+        await switchLocationMode(newMode.id); // Argument 'locationId' entfernt
+        const updatedMode = await fetchCurrentLocationMode(); // Argument 'locationId' entfernt
         if (updatedMode && updatedMode.mode && updatedMode.mode.name) {
           setCurrentMode(updatedMode.mode.name); // Update currentMode state
         } else {
@@ -59,7 +59,7 @@ export default function ShowLocationMode() {
         showToast(ToastStyle.Failure, "Invalid mode name");
       }
     } catch (error) {
-      showToast(ToastStyle.Failure, "Failed to change location mode", error.message);
+      showToast(ToastStyle.Failure, "Failed to change location mode", (error as Error).message); // Typ 'Error' explizit angeben
     }
   };
 
@@ -78,7 +78,7 @@ export default function ShowLocationMode() {
                     <Action
                       title="Current Mode"
                       icon={Icon.Checkmark}
-                      disabled
+                      onAction={undefined} // Aktion deaktivieren
                     />
                   </ActionPanel>
                 ) : (
