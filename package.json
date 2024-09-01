@@ -4,7 +4,7 @@
   "title": "SmartThings Connector",
   "description": "Integration with SmartThings to manage lights, scenes, and location modes.",
   "icon": "smartthings_white.png",
-  "author": "Ingo J",
+  "author": "4IngoJ",
   "categories": ["Other"],
   "license": "MIT",
   "version": "1.0.0",
