@@ -65,6 +65,7 @@ export async function fetchLocationModes() {
     const response = await api.get(
       `/locations/${SMARTTHINGS_LOCATION_ID}/modes`
     );
+    console.log("Location modes API response:", response.data);
     return response.data.items;
   } catch (error) {
     console.error("Error fetching location modes:", error);
@@ -77,6 +78,7 @@ export async function fetchCurrentLocationMode() {
     const response = await api.get(
       `/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`
     );
+    console.log("Current mode API response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching current mode:", error);

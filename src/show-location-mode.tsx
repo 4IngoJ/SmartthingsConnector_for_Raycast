@@ -5,6 +5,7 @@ import {
   ActionPanel,
   Icon,
   Action,
+  Color,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
 import {
@@ -23,10 +24,14 @@ export default function ShowLocationMode() {
   const updateCurrentMode = async () => {
     try {
       const currentModeData = await fetchCurrentLocationMode();
-      if (currentModeData?.mode) {
+      // Log the response to see the structure
+      console.log("Current mode data:", currentModeData);
+      
+      // Update how we handle the response based on the API structure
+      if (currentModeData) {
         setCurrentMode({
-          id: currentModeData.mode.id,
-          name: currentModeData.mode.name,
+          id: currentModeData.id,
+          name: currentModeData.label || currentModeData.name,
         });
       }
     } catch (error) {
@@ -43,14 +48,15 @@ export default function ShowLocationMode() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch available modes
+        // First fetch current mode
+        await updateCurrentMode();
+
+        // Then fetch available modes
         const availableModes = await fetchLocationModes();
         if (Array.isArray(availableModes)) {
+          console.log("Available modes:", availableModes);
           setModes(availableModes);
         }
-
-        // Fetch current mode
-        await updateCurrentMode();
       } catch (error) {
         console.error("Error in fetchData:", error);
         showToast({
@@ -88,17 +94,21 @@ export default function ShowLocationMode() {
     }
   };
 
+  const getModeIcon = (mode: LocationMode) => {
+    const isActive = currentMode?.id === mode.id;
+    return {
+      source: isActive ? Icon.CheckCircle : Icon.Circle,
+      tintColor: isActive ? Color.Green : Color.SecondaryText,
+    };
+  };
+
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search location modes...">
       {modes.map((mode) => (
         <List.Item
           key={mode.id}
           title={mode.name}
-          icon={
-            currentMode?.id === mode.id
-              ? { source: Icon.CheckCircle }
-              : { source: Icon.Circle }
-          }
+          icon={getModeIcon(mode)}
           actions={
             <ActionPanel>
               {currentMode?.id !== mode.id && (
