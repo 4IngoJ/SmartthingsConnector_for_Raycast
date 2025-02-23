@@ -1,116 +1,103 @@
 import { MenuBarExtra, Icon, showToast, Toast } from "@raycast/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
 import { LocationMode } from "./types";
 
 export default function Command() {
-  const [currentMode, setCurrentMode] = useState<LocationMode | null>(null);
-  const [availableModes, setAvailableModes] = useState<LocationMode[]>([]);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [menuState, setMenuState] = useState({
+    currentMode: { id: "", name: "Loading..." },
+    availableModes: [] as LocationMode[],
+  });
 
-  const updateCurrentMode = async () => {
-    let newModeData;
+  const safeUpdateCurrentMode = useCallback(async () => {
     try {
-      newModeData = await fetchCurrentLocationMode();
-      if (newModeData) {
-        setCurrentMode({
-          id: newModeData.id,
-          name: newModeData.label || newModeData.name,
-        });
+      const modeData = await fetchCurrentLocationMode();
+      if (modeData?.id && modeData?.name) {
+        setMenuState(prev => ({
+          ...prev,
+          currentMode: {
+            id: modeData.id,
+            name: modeData.label || modeData.name,
+          },
+        }));
       }
     } catch (error) {
-      console.error("Error fetching current mode:", error);
+      console.error("Failed to update current mode:", error);
     }
-    return newModeData;
-  };
+  }, []);
 
-  const loadModes = async () => {
+  const safeLoadModes = useCallback(async () => {
     try {
       const modes = await fetchLocationModes();
-      setAvailableModes(modes);
+      if (Array.isArray(modes)) {
+        setMenuState(prev => ({
+          ...prev,
+          availableModes: modes,
+        }));
+      }
     } catch (error) {
-      console.error("Error fetching modes:", error);
-      if (!hasInitialized) {
-        showToast({
-          style: Toast.Style.Failure,
-          title: "Failed to fetch modes",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
+      console.error("Failed to load modes:", error);
     }
-  };
+  }, []);
 
-  const handleModeSwitch = async (modeId: string) => {
-    const previousMode = currentMode;
+  const safeHandleModeSwitch = useCallback(async (modeId: string) => {
+    const previousState = menuState;
+    const targetMode = menuState.availableModes.find(mode => mode.id === modeId);
+    
+    if (!targetMode) return;
+
     try {
-      // Optimistically update UI
-      const newMode = availableModes.find(mode => mode.id === modeId);
-      if (newMode) {
-        setCurrentMode(newMode);
-      }
+      // Optimistic update
+      setMenuState(prev => ({
+        ...prev,
+        currentMode: targetMode,
+      }));
 
       await switchLocationMode(modeId);
-      const updatedMode = await updateCurrentMode();
+      await safeUpdateCurrentMode();
       
-      if (updatedMode) {
-        showToast({
-          style: Toast.Style.Success,
-          title: "Mode Changed",
-        });
-      }
+      showToast({
+        style: Toast.Style.Success,
+        title: "Mode Changed",
+      });
     } catch (error) {
-      // Revert on error
-      setCurrentMode(previousMode);
+      // Rollback on error
+      setMenuState(previousState);
       showToast({
         style: Toast.Style.Failure,
         title: "Failed to change mode",
-        message: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  };
+  }, [menuState]);
 
-  const refreshData = async () => {
-    const modePromise = updateCurrentMode();
-    const modesPromise = loadModes();
-    await Promise.all([modePromise, modesPromise]);
-  };
-
+  // Initial load and refresh setup
   useEffect(() => {
-    const initialize = async () => {
-      await refreshData();
-      setHasInitialized(true);
-    };
+    // Initial load
+    safeUpdateCurrentMode();
+    safeLoadModes();
 
-    initialize();
-    
-    const refreshInterval = setInterval(refreshData, 10000);
+    // Set up refresh interval
+    const refreshInterval = setInterval(() => {
+      safeUpdateCurrentMode();
+      safeLoadModes();
+    }, 10000);
+
     return () => clearInterval(refreshInterval);
-  }, []);
-
-  // Don't render anything until first load is complete
-  if (!hasInitialized) {
-    return (
-      <MenuBarExtra
-        icon="smartthings_white.png"
-        title="Initializing..."
-        tooltip="Current Home Mode"
-      />
-    );
-  }
+  }, [safeUpdateCurrentMode, safeLoadModes]);
 
   return (
     <MenuBarExtra
       icon="smartthings_white.png"
-      title={currentMode?.name || "Unknown"}
+      title={menuState.currentMode.name}
       tooltip="Current Home Mode"
     >
       <MenuBarExtra.Section>
-        {availableModes.map((mode) => (
+        {menuState.availableModes.map((mode) => (
           <MenuBarExtra.Item
             key={mode.id}
             title={mode.name}
-            icon={mode.id === currentMode?.id ? Icon.CheckCircle : Icon.Circle}
-            onAction={() => handleModeSwitch(mode.id)}
+            icon={mode.id === menuState.currentMode.id ? Icon.CheckCircle : Icon.Circle}
+            onAction={() => safeHandleModeSwitch(mode.id)}
           />
         ))}
       </MenuBarExtra.Section>

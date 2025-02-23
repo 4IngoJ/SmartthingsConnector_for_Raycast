@@ -225,6 +225,9 @@ export default function Command() {
                                     ...d,
                                     status: {
                                       ...d.status,
+                                      switch: {
+                                        switch: { value: "on" }
+                                      },
                                       switchLevel: { level: { value: 100 } }
                                     }
                                   }
@@ -249,6 +252,9 @@ export default function Command() {
                                     ...d,
                                     status: {
                                       ...d.status,
+                                      switch: {
+                                        switch: { value: "on" }
+                                      },
                                       switchLevel: { level: { value: 75 } }
                                     }
                                   }
@@ -273,6 +279,9 @@ export default function Command() {
                                     ...d,
                                     status: {
                                       ...d.status,
+                                      switch: {
+                                        switch: { value: "on" }
+                                      },
                                       switchLevel: { level: { value: 50 } }
                                     }
                                   }
@@ -297,6 +306,9 @@ export default function Command() {
                                     ...d,
                                     status: {
                                       ...d.status,
+                                      switch: {
+                                        switch: { value: "on" }
+                                      },
                                       switchLevel: { level: { value: 25 } }
                                     }
                                   }
@@ -321,6 +333,9 @@ export default function Command() {
                                     ...d,
                                     status: {
                                       ...d.status,
+                                      switch: {
+                                        switch: { value: "on" }
+                                      },
                                       switchLevel: { level: { value: 10 } }
                                     }
                                   }

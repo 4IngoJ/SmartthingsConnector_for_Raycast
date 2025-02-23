@@ -47,6 +47,11 @@ export async function setLightLevel(deviceId: string, level: number) {
         commands: [
           {
             component: "main",
+            capability: "switch",
+            command: "on"
+          },
+          {
+            component: "main",
             capability: "switchLevel",
             command: "setLevel",
             arguments: [level]
