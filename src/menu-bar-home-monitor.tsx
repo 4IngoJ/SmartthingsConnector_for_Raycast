@@ -1,6 +1,8 @@
 import { MenuBarExtra, Icon, showToast, Toast, Color, getPreferenceValues } from "@raycast/api";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
+import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode, fetchDevices } from "./fetchDevices";
+import { fetchRooms } from "./fetchRooms";
+import { toggleLight, setLightLevel } from "./toggleLight";
 import { LocationMode } from "./types";
 import axios from "axios";
 
@@ -19,6 +21,23 @@ interface Scene {
   lastExecutedDate?: string;
 }
 
+interface Device {
+  deviceId: string;
+  label: string;
+  status?: {
+    switch?: {
+      switch?: {
+        value?: string;
+      };
+    };
+    switchLevel?: {
+      level?: {
+        value?: number;
+      };
+    };
+  };
+}
+
 export default function Command() {
   const [currentMode, setCurrentMode] = useState<LocationMode>({
     id: "",
@@ -26,6 +45,7 @@ export default function Command() {
   });
   const [availableModes, setAvailableModes] = useState<LocationMode[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [lights, setLights] = useState<Device[]>([]);
 
   const preferences = getPreferenceValues<Preferences>();
   const preferencesRef = useRef(preferences);
@@ -163,16 +183,76 @@ export default function Command() {
     }
   }, [preferences.apiToken]);
 
+  // Load lights from SmartThings API
+  const loadLights = useCallback(async () => {
+    try {
+      const devices = await fetchDevices();
+      const lightDevices = devices.filter(device => 
+        device.components?.some(component => 
+          component.categories?.some(category => category.name === "Light")
+        )
+      );
+      setLights(lightDevices);
+      console.log("Fetched Lights:", lightDevices);
+    } catch (error) {
+      console.error("Failed to load lights:", error);
+    }
+  }, []);
+
+  // Handle light toggle
+  const handleLightToggle = useCallback(async (device: Device) => {
+    try {
+      const currentStatus = device.status?.switch?.switch?.value || "off";
+      await toggleLight(device.deviceId, currentStatus);
+      await loadLights(); // Refresh lights after toggle
+      
+      showToast({
+        style: Toast.Style.Success,
+        title: "Light Toggled",
+        message: `${device.label} turned ${currentStatus === "on" ? "off" : "on"}`,
+      });
+    } catch (error) {
+      console.error("Failed to toggle light:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to Toggle Light",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }, [loadLights]);
+
+  // Handle brightness change
+  const handleBrightnessChange = useCallback(async (device: Device, level: number) => {
+    try {
+      await setLightLevel(device.deviceId, level);
+      await loadLights(); // Refresh lights after change
+      
+      showToast({
+        style: Toast.Style.Success,
+        title: "Brightness Changed",
+        message: `${device.label} set to ${level}%`,
+      });
+    } catch (error) {
+      console.error("Failed to change brightness:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to Change Brightness",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }, [loadLights]);
+
   useEffect(() => {
     isActiveRef.current = true;
     preferencesRef.current = preferences;
     
     console.log("\n=== Initializing Menu Bar Monitor ===");
     
-    // Initial load of modes and scenes
+    // Initial load of all data
     updateCurrentMode();
     loadModes();
     loadScenes();
+    loadLights();
     setupBackgroundRefresh();
 
     return () => {
@@ -181,7 +261,7 @@ export default function Command() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode, loadModes, loadScenes]);
+  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode, loadModes, loadScenes, loadLights]);
 
   return (
     <MenuBarExtra
@@ -200,6 +280,50 @@ export default function Command() {
             }}
             onAction={() => mode.id !== currentMode.id && handleModeSwitch(mode)}
           />
+        ))}
+      </MenuBarExtra.Section>
+
+      <MenuBarExtra.Section title="Lights">
+        {lights.map((device) => (
+          <MenuBarExtra.Submenu
+            key={device.deviceId}
+            title={device.label}
+            icon={{
+              source: Icon.LightBulb,
+              tintColor: device.status?.switch?.switch?.value === "on" ? Color.Green : Color.SecondaryText,
+            }}
+          >
+            <MenuBarExtra.Item
+              title={device.status?.switch?.switch?.value === "on" ? "Turn Off" : "Turn On"}
+              icon={Icon.Power}
+              onAction={() => handleLightToggle(device)}
+            />
+            {device.status?.switchLevel !== undefined && (
+              <>
+                <MenuBarExtra.Separator />
+                <MenuBarExtra.Item
+                  title="100% Brightness"
+                  onAction={() => handleBrightnessChange(device, 100)}
+                />
+                <MenuBarExtra.Item
+                  title="75% Brightness"
+                  onAction={() => handleBrightnessChange(device, 75)}
+                />
+                <MenuBarExtra.Item
+                  title="50% Brightness"
+                  onAction={() => handleBrightnessChange(device, 50)}
+                />
+                <MenuBarExtra.Item
+                  title="25% Brightness"
+                  onAction={() => handleBrightnessChange(device, 25)}
+                />
+                <MenuBarExtra.Item
+                  title="10% Brightness"
+                  onAction={() => handleBrightnessChange(device, 10)}
+                />
+              </>
+            )}
+          </MenuBarExtra.Submenu>
         ))}
       </MenuBarExtra.Section>
 
