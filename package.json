@@ -84,6 +84,15 @@
               "value": "30m"
             }
           ]
+        },
+        {
+          "name": "enableBackgroundRefresh",
+          "title": "Enable Background Refresh",
+          "description": "Automatically refresh the location mode in the background",
+          "type": "checkbox",
+          "required": false,
+          "default": false,
+          "label": "Enable background refresh"
         }
       ]
     }

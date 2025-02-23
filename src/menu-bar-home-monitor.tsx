@@ -18,14 +18,19 @@ const getRefreshIntervalMs = (interval: string): number => {
   }
 };
 
+interface Preferences {
+  refreshInterval: string;
+  enableBackgroundRefresh: boolean;
+}
+
 export default function Command() {
   const [currentMode, setCurrentMode] = useState<LocationMode>({
     id: "",
     name: "Loading...",
   });
 
-  // Get refresh interval from preferences
-  const { refreshInterval } = getPreferenceValues<{ refreshInterval: string }>();
+  // Get preferences
+  const { refreshInterval, enableBackgroundRefresh } = getPreferenceValues<Preferences>();
   const intervalMs = getRefreshIntervalMs(refreshInterval);
 
   // Function to fetch and update current mode
@@ -34,6 +39,7 @@ export default function Command() {
       const timestamp = new Date().toLocaleString();
       console.log("\n--- Fetching Current Mode ---");
       console.log("Timestamp:", timestamp);
+      console.log("Refresh Type:", enableBackgroundRefresh ? "Background" : "Manual");
       
       const modeData = await fetchCurrentLocationMode();
       console.log("API Response:", JSON.stringify(modeData, null, 2));
@@ -44,7 +50,6 @@ export default function Command() {
           name: modeData.label || modeData.name,
         };
         
-        // Only update if the mode actually changed
         setCurrentMode(prev => {
           if (prev.id !== newMode.id || prev.name !== newMode.name) {
             console.log("Mode changed from:", prev, "to:", newMode);
@@ -67,40 +72,55 @@ export default function Command() {
     await updateCurrentMode();
   }, [updateCurrentMode]);
 
+  // Setup background refresh
   useEffect(() => {
     let isActive = true;
     
     console.log("\n=== Initializing Menu Bar Monitor ===");
-    console.log("Refresh interval set to:", refreshInterval, `(${intervalMs}ms)`);
+    console.log("Background Refresh:", enableBackgroundRefresh ? "Enabled" : "Disabled");
+    console.log("Refresh interval:", refreshInterval, `(${intervalMs}ms)`);
     
     // Initial fetch
     updateCurrentMode();
 
-    // Set up refresh interval
-    const interval = setInterval(() => {
-      if (isActive) {
-        console.log("\n=== Auto Refresh Triggered ===");
-        updateCurrentMode();
-      }
-    }, intervalMs);
+    // Set up background refresh interval if enabled
+    let interval: NodeJS.Timeout | undefined;
+    
+    if (enableBackgroundRefresh) {
+      interval = setInterval(() => {
+        if (isActive) {
+          console.log("\n=== Background Refresh Triggered ===");
+          updateCurrentMode();
+        }
+      }, intervalMs);
+      console.log("Background refresh interval started");
+    }
 
     // Cleanup function
     return () => {
       isActive = false;
-      clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+        console.log("Background refresh interval cleared");
+      }
       console.log("\n=== Cleaning up Menu Bar Monitor ===");
     };
-  }, [intervalMs, refreshInterval, updateCurrentMode]);
+  }, [intervalMs, refreshInterval, enableBackgroundRefresh, updateCurrentMode]);
 
   return (
     <MenuBarExtra
       icon="smartthings_white.png"
       title={currentMode.name}
-      tooltip="Current Home Mode"
+      tooltip={`Current Home Mode${enableBackgroundRefresh ? ' (Auto-refresh)' : ''}`}
     >
       <MenuBarExtra.Item
-        title="Refresh"
+        title="Refresh Now"
         onAction={handleClick}
+      />
+      <MenuBarExtra.Separator />
+      <MenuBarExtra.Item
+        title={`Background Refresh: ${enableBackgroundRefresh ? 'On' : 'Off'}`}
+        tooltip={enableBackgroundRefresh ? `Updates every ${refreshInterval}` : 'Manual updates only'}
       />
     </MenuBarExtra>
   );
