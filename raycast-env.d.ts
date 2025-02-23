@@ -29,7 +29,10 @@ declare namespace Preferences {
   /** Preferences accessible in the `show-all-devices` command */
   export type ShowAllDevices = ExtensionPreferences & {}
   /** Preferences accessible in the `menu-bar-home-monitor` command */
-  export type MenuBarHomeMonitor = ExtensionPreferences & {}
+  export type MenuBarHomeMonitor = ExtensionPreferences & {
+  /** Refresh Interval - How often to refresh the location mode */
+  "refreshInterval": "5s" | "10s" | "30s" | "1m" | "5m" | "10m" | "30m"
+}
 }
 
 declare namespace Arguments {

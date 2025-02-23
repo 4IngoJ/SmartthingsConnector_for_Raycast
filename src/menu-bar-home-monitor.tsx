@@ -1,106 +1,107 @@
-import { MenuBarExtra, Icon, showToast, Toast } from "@raycast/api";
+import { MenuBarExtra, getPreferenceValues } from "@raycast/api";
 import { useEffect, useState, useCallback } from "react";
-import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
+import { fetchCurrentLocationMode } from "./fetchDevices";
 import { LocationMode } from "./types";
 
+// Helper to convert preference string to milliseconds
+const getRefreshIntervalMs = (interval: string): number => {
+  const value = parseInt(interval.slice(0, -1));
+  const unit = interval.slice(-1);
+  
+  switch (unit) {
+    case 's':
+      return value * 1000;
+    case 'm':
+      return value * 60 * 1000;
+    default:
+      return 10000;
+  }
+};
+
 export default function Command() {
-  const [menuState, setMenuState] = useState({
-    currentMode: { id: "", name: "Loading..." },
-    availableModes: [] as LocationMode[],
+  const [currentMode, setCurrentMode] = useState<LocationMode>({
+    id: "",
+    name: "Loading...",
   });
 
-  const safeUpdateCurrentMode = useCallback(async () => {
+  // Get refresh interval from preferences
+  const { refreshInterval } = getPreferenceValues<{ refreshInterval: string }>();
+  const intervalMs = getRefreshIntervalMs(refreshInterval);
+
+  // Function to fetch and update current mode
+  const updateCurrentMode = useCallback(async () => {
     try {
-      const modeData = await fetchCurrentLocationMode();
-      if (modeData?.id && modeData?.name) {
-        setMenuState(prev => ({
-          ...prev,
-          currentMode: {
-            id: modeData.id,
-            name: modeData.label || modeData.name,
-          },
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to update current mode:", error);
-    }
-  }, []);
-
-  const safeLoadModes = useCallback(async () => {
-    try {
-      const modes = await fetchLocationModes();
-      if (Array.isArray(modes)) {
-        setMenuState(prev => ({
-          ...prev,
-          availableModes: modes,
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to load modes:", error);
-    }
-  }, []);
-
-  const safeHandleModeSwitch = useCallback(async (modeId: string) => {
-    const previousState = menuState;
-    const targetMode = menuState.availableModes.find(mode => mode.id === modeId);
-    
-    if (!targetMode) return;
-
-    try {
-      // Optimistic update
-      setMenuState(prev => ({
-        ...prev,
-        currentMode: targetMode,
-      }));
-
-      await switchLocationMode(modeId);
-      await safeUpdateCurrentMode();
+      const timestamp = new Date().toLocaleString();
+      console.log("\n--- Fetching Current Mode ---");
+      console.log("Timestamp:", timestamp);
       
-      showToast({
-        style: Toast.Style.Success,
-        title: "Mode Changed",
-      });
+      const modeData = await fetchCurrentLocationMode();
+      console.log("API Response:", JSON.stringify(modeData, null, 2));
+      
+      if (modeData?.id) {
+        const newMode = {
+          id: modeData.id,
+          name: modeData.label || modeData.name,
+        };
+        
+        // Only update if the mode actually changed
+        setCurrentMode(prev => {
+          if (prev.id !== newMode.id || prev.name !== newMode.name) {
+            console.log("Mode changed from:", prev, "to:", newMode);
+            return newMode;
+          }
+          console.log("Mode unchanged:", prev);
+          return prev;
+        });
+      } else {
+        console.log("Invalid mode data received");
+      }
     } catch (error) {
-      // Rollback on error
-      setMenuState(previousState);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to change mode",
-      });
+      console.error("Failed to fetch current mode:", error);
     }
-  }, [menuState]);
+  }, []);
 
-  // Initial load and refresh setup
+  // Handle manual refresh on click
+  const handleClick = useCallback(async () => {
+    console.log("\n=== Manual Refresh Triggered ===");
+    await updateCurrentMode();
+  }, [updateCurrentMode]);
+
   useEffect(() => {
-    // Initial load
-    safeUpdateCurrentMode();
-    safeLoadModes();
+    let isActive = true;
+    
+    console.log("\n=== Initializing Menu Bar Monitor ===");
+    console.log("Refresh interval set to:", refreshInterval, `(${intervalMs}ms)`);
+    
+    // Initial fetch
+    updateCurrentMode();
 
     // Set up refresh interval
-    const refreshInterval = setInterval(() => {
-      safeUpdateCurrentMode();
-      safeLoadModes();
-    }, 10000);
+    const interval = setInterval(() => {
+      if (isActive) {
+        console.log("\n=== Auto Refresh Triggered ===");
+        updateCurrentMode();
+      }
+    }, intervalMs);
 
-    return () => clearInterval(refreshInterval);
-  }, [safeUpdateCurrentMode, safeLoadModes]);
+    // Cleanup function
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+      console.log("\n=== Cleaning up Menu Bar Monitor ===");
+    };
+  }, [intervalMs, refreshInterval, updateCurrentMode]);
 
   return (
     <MenuBarExtra
       icon="smartthings_white.png"
-      title={menuState.currentMode.name}
+      title={currentMode.name}
       tooltip="Current Home Mode"
     >
-      <MenuBarExtra.Section>
-        {menuState.availableModes.map((mode) => (
-          <MenuBarExtra.Item
-            key={mode.id}
-            title={mode.name}
-            icon={mode.id === menuState.currentMode.id ? Icon.CheckCircle : Icon.Circle}
-            onAction={() => safeHandleModeSwitch(mode.id)}
-          />
-        ))}
-      </MenuBarExtra.Section>
+      <MenuBarExtra.Item
+        title="Refresh"
+        onAction={handleClick}
+      />
     </MenuBarExtra>
   );
 } 
