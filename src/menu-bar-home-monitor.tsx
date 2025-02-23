@@ -2,12 +2,21 @@ import { MenuBarExtra, Icon, showToast, Toast, Color, getPreferenceValues } from
 import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
 import { LocationMode } from "./types";
+import axios from "axios";
 
 // Fixed 10 second refresh interval
 const REFRESH_INTERVAL_MS = 10000;
 
 interface Preferences {
   enableBackgroundRefresh: boolean;
+  apiToken: string;
+  locationId: string;
+}
+
+interface Scene {
+  sceneId: string;
+  sceneName: string;
+  lastExecutedDate?: string;
 }
 
 export default function Command() {
@@ -16,6 +25,7 @@ export default function Command() {
     name: "Loading...",
   });
   const [availableModes, setAvailableModes] = useState<LocationMode[]>([]);
+  const [scenes, setScenes] = useState<Scene[]>([]);
 
   const preferences = getPreferenceValues<Preferences>();
   const preferencesRef = useRef(preferences);
@@ -107,15 +117,62 @@ export default function Command() {
     }
   }, [updateCurrentMode]);
 
+  // Fetch scenes from SmartThings API
+  const loadScenes = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `https://api.smartthings.com/v1/scenes?locationId=${preferences.locationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${preferences.apiToken}`,
+          },
+        }
+      );
+      
+      console.log("Fetched Scenes:", response.data);
+      setScenes(response.data.items);
+    } catch (error) {
+      console.error("Failed to load scenes:", error);
+    }
+  }, [preferences.apiToken, preferences.locationId]);
+
+  // Execute a scene
+  const handleSceneExecution = useCallback(async (sceneId: string, sceneName: string) => {
+    try {
+      await axios.post(
+        `https://api.smartthings.com/v1/scenes/${sceneId}/execute`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${preferences.apiToken}`,
+          },
+        }
+      );
+      showToast({
+        style: Toast.Style.Success,
+        title: "Scene Activated",
+        message: `Successfully executed ${sceneName}`,
+      });
+    } catch (error) {
+      console.error("Failed to execute scene:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to Execute Scene",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }, [preferences.apiToken]);
+
   useEffect(() => {
     isActiveRef.current = true;
     preferencesRef.current = preferences;
     
     console.log("\n=== Initializing Menu Bar Monitor ===");
     
-    // Initial load of both current mode and available modes
+    // Initial load of modes and scenes
     updateCurrentMode();
     loadModes();
+    loadScenes();
     setupBackgroundRefresh();
 
     return () => {
@@ -124,7 +181,7 @@ export default function Command() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode, loadModes]);
+  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode, loadModes, loadScenes]);
 
   return (
     <MenuBarExtra
@@ -142,6 +199,18 @@ export default function Command() {
               tintColor: mode.id === currentMode.id ? Color.Green : Color.SecondaryText,
             }}
             onAction={() => mode.id !== currentMode.id && handleModeSwitch(mode)}
+          />
+        ))}
+      </MenuBarExtra.Section>
+
+      <MenuBarExtra.Section title="Scenes">
+        {scenes.map((scene) => (
+          <MenuBarExtra.Item
+            key={scene.sceneId}
+            title={scene.sceneName}
+            icon={Icon.Play}
+            onAction={() => handleSceneExecution(scene.sceneId, scene.sceneName)}
+            tooltip={scene.lastExecutedDate ? `Last executed: ${new Date(scene.lastExecutedDate).toLocaleString()}` : 'Never executed'}
           />
         ))}
       </MenuBarExtra.Section>
