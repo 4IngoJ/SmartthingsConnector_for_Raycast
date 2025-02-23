@@ -28,6 +28,8 @@ declare namespace Preferences {
   export type ShowScenes = ExtensionPreferences & {}
   /** Preferences accessible in the `show-all-devices` command */
   export type ShowAllDevices = ExtensionPreferences & {}
+  /** Preferences accessible in the `menu-bar-home-monitor` command */
+  export type MenuBarHomeMonitor = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -41,6 +43,8 @@ declare namespace Arguments {
   export type ShowScenes = {}
   /** Arguments passed to the `show-all-devices` command */
   export type ShowAllDevices = {}
+  /** Arguments passed to the `menu-bar-home-monitor` command */
+  export type MenuBarHomeMonitor = {}
 }
 
 
