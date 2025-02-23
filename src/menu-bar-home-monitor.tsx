@@ -1,6 +1,6 @@
-import { MenuBarExtra, getPreferenceValues } from "@raycast/api";
+import { MenuBarExtra, Icon, showToast, Toast, Color, getPreferenceValues } from "@raycast/api";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { fetchCurrentLocationMode } from "./fetchDevices";
+import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
 import { LocationMode } from "./types";
 
 // Fixed 10 second refresh interval
@@ -15,11 +15,24 @@ export default function Command() {
     id: "",
     name: "Loading...",
   });
+  const [availableModes, setAvailableModes] = useState<LocationMode[]>([]);
 
   const preferences = getPreferenceValues<Preferences>();
   const preferencesRef = useRef(preferences);
   const intervalRef = useRef<NodeJS.Timeout>();
   const isActiveRef = useRef(true);
+
+  // Fetch all available modes
+  const loadModes = useCallback(async () => {
+    try {
+      const modes = await fetchLocationModes();
+      if (Array.isArray(modes)) {
+        setAvailableModes(modes);
+      }
+    } catch (error) {
+      console.error("Failed to load modes:", error);
+    }
+  }, []);
 
   const updateCurrentMode = useCallback(async () => {
     if (!isActiveRef.current) return;
@@ -30,10 +43,7 @@ export default function Command() {
       console.log("Timestamp:", timestamp);
       console.log("Current Settings:");
       console.log("- Background Refresh:", preferencesRef.current.enableBackgroundRefresh ? "Enabled" : "Disabled");
-      console.log("Current State:");
-      console.log("- Display Mode:", currentMode);
       
-      console.log("\nFetching new data from SmartThings API...");
       const modeData = await fetchCurrentLocationMode();
       console.log("API Response:", JSON.stringify(modeData, null, 2));
       
@@ -45,29 +55,40 @@ export default function Command() {
         
         setCurrentMode(prev => {
           if (prev.id !== newMode.id || prev.name !== newMode.name) {
-            console.log("\nMode Change Detected:");
-            console.log("- Previous Mode:", prev);
-            console.log("- New Mode:", newMode);
+            console.log("\nMode Change Detected:", { prev, new: newMode });
             return newMode;
           }
-          console.log("\nNo Mode Change:");
-          console.log("- Current Mode:", prev);
-          console.log("- API Mode:", newMode);
           return prev;
         });
       }
     } catch (error) {
-      console.error("\nError During Refresh:");
-      console.error("- Type: API Fetch Error");
-      console.error("- Details:", error);
-      console.error("- Current Mode Retained:", currentMode);
+      console.error("\nError During Refresh:", error);
     }
-  }, [currentMode]);
+  }, []);
+
+  const handleModeSwitch = useCallback(async (mode: LocationMode) => {
+    try {
+      await switchLocationMode(mode.id);
+      await updateCurrentMode();
+      showToast({
+        style: Toast.Style.Success,
+        title: "Mode Changed",
+        message: `Successfully switched to ${mode.name}`,
+      });
+    } catch (error) {
+      console.error("Error switching mode:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to change mode",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }, [updateCurrentMode]);
 
   const handleManualRefresh = useCallback(async () => {
     console.log("\n=== Manual Refresh Triggered ===");
-    await updateCurrentMode();
-  }, [updateCurrentMode]);
+    await Promise.all([updateCurrentMode(), loadModes()]);
+  }, [updateCurrentMode, loadModes]);
 
   const setupBackgroundRefresh = useCallback(() => {
     if (intervalRef.current) {
@@ -77,9 +98,6 @@ export default function Command() {
 
     if (preferencesRef.current.enableBackgroundRefresh) {
       console.log("\n=== Setting up Background Refresh ===");
-      console.log("Configuration:");
-      console.log("- Interval: 10 seconds");
-      console.log("- Milliseconds:", REFRESH_INTERVAL_MS);
       
       intervalRef.current = setInterval(() => {
         if (isActiveRef.current) {
@@ -94,21 +112,19 @@ export default function Command() {
     preferencesRef.current = preferences;
     
     console.log("\n=== Initializing Menu Bar Monitor ===");
-    console.log("Initial Configuration:");
-    console.log("- Background Refresh:", preferences.enableBackgroundRefresh ? "Enabled" : "Disabled");
     
+    // Initial load of both current mode and available modes
     updateCurrentMode();
+    loadModes();
     setupBackgroundRefresh();
 
     return () => {
       isActiveRef.current = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-        intervalRef.current = undefined;
       }
-      console.log("\n=== Cleaning up Menu Bar Monitor ===");
     };
-  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode]);
+  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode, loadModes]);
 
   return (
     <MenuBarExtra
@@ -116,15 +132,19 @@ export default function Command() {
       title={currentMode.name}
       tooltip={`Current Home Mode${preferences.enableBackgroundRefresh ? ' (Auto-refresh: 10s)' : ''}`}
     >
-      <MenuBarExtra.Item
-        title="Refresh"
-        onAction={handleManualRefresh}
-      />
-      <MenuBarExtra.Separator />
-      <MenuBarExtra.Item
-        title={`Auto-refresh: ${preferences.enableBackgroundRefresh ? 'On' : 'Off'}`}
-        tooltip={preferences.enableBackgroundRefresh ? 'Updates every 10 seconds' : 'Manual updates only'}
-      />
+      <MenuBarExtra.Section title="Switch Mode">
+        {availableModes.map((mode) => (
+          <MenuBarExtra.Item
+            key={mode.id}
+            title={mode.name}
+            icon={{
+              source: mode.id === currentMode.id ? Icon.CheckCircle : Icon.Circle,
+              tintColor: mode.id === currentMode.id ? Color.Green : Color.SecondaryText,
+            }}
+            onAction={() => mode.id !== currentMode.id && handleModeSwitch(mode)}
+          />
+        ))}
+      </MenuBarExtra.Section>
     </MenuBarExtra>
   );
 } 
