@@ -48,47 +48,9 @@
       "mode": "menu-bar",
       "preferences": [
         {
-          "name": "refreshInterval",
-          "title": "Refresh Interval",
-          "description": "How often to refresh the location mode",
-          "type": "dropdown",
-          "required": false,
-          "default": "10s",
-          "data": [
-            {
-              "title": "5 seconds",
-              "value": "5s"
-            },
-            {
-              "title": "10 seconds",
-              "value": "10s"
-            },
-            {
-              "title": "30 seconds",
-              "value": "30s"
-            },
-            {
-              "title": "1 minute",
-              "value": "1m"
-            },
-            {
-              "title": "5 minutes",
-              "value": "5m"
-            },
-            {
-              "title": "10 minutes",
-              "value": "10m"
-            },
-            {
-              "title": "30 minutes",
-              "value": "30m"
-            }
-          ]
-        },
-        {
           "name": "enableBackgroundRefresh",
           "title": "Enable Background Refresh",
-          "description": "Automatically refresh the location mode in the background",
+          "description": "Automatically refresh the location mode every 10 seconds",
           "type": "checkbox",
           "required": false,
           "default": false,
