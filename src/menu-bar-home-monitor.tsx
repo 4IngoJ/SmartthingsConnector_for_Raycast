@@ -6,8 +6,8 @@ import { toggleLight, setLightLevel } from "./toggleLight";
 import { LocationMode } from "./types";
 import axios from "axios";
 
-// Fixed 10 second refresh interval
-const REFRESH_INTERVAL_MS = 10000;
+// Fixed 1 minute refresh interval
+const REFRESH_INTERVAL_MS = 60000;
 
 interface Preferences {
   enableBackgroundRefresh: boolean;
@@ -21,6 +21,28 @@ interface Scene {
   lastExecutedDate?: string;
 }
 
+interface ApiDevice {
+  deviceId: string;
+  label: string;
+  roomId: string;
+  components: Array<{
+    categories: Array<{ name: string }>;
+  }>;
+  status?: {
+    switch?: {
+      switch?: {
+        value?: string;
+        timestamp?: string;
+      };
+    };
+    switchLevel?: {
+      level?: {
+        value?: number;
+      };
+    };
+  };
+}
+
 interface Device {
   deviceId: string;
   label: string;
@@ -28,6 +50,7 @@ interface Device {
     switch?: {
       switch?: {
         value?: string;
+        timestamp?: string;
       };
     };
     switchLevel?: {
@@ -187,11 +210,18 @@ export default function Command() {
   const loadLights = useCallback(async () => {
     try {
       const devices = await fetchDevices();
-      const lightDevices = devices.filter(device => 
-        device.components?.some(component => 
-          component.categories?.some(category => category.name === "Light")
+      const lightDevices = devices
+        .filter((device: ApiDevice) => 
+          device.components?.some(component => 
+            component.categories?.some(category => category.name === "Light")
+          )
         )
-      );
+        .map((device: ApiDevice): Device => ({
+          deviceId: device.deviceId,
+          label: device.label || device.deviceId,
+          status: device.status
+        }));
+
       setLights(lightDevices);
       console.log("Fetched Lights:", lightDevices);
     } catch (error) {
@@ -267,7 +297,7 @@ export default function Command() {
     <MenuBarExtra
       icon="smartthings_white.png"
       title={currentMode.name}
-      tooltip={`Current Home Mode${preferences.enableBackgroundRefresh ? ' (Auto-refresh: 10s)' : ''}`}
+      tooltip={`Current Home Mode${preferences.enableBackgroundRefresh ? ' (Auto-refresh: 1m)' : ''}`}
     >
       <MenuBarExtra.Section title="Switch Mode">
         {availableModes.map((mode) => (
@@ -284,47 +314,68 @@ export default function Command() {
       </MenuBarExtra.Section>
 
       <MenuBarExtra.Section title="Lights">
-        {lights.map((device) => (
-          <MenuBarExtra.Submenu
-            key={device.deviceId}
-            title={device.label}
-            icon={{
-              source: Icon.LightBulb,
-              tintColor: device.status?.switch?.switch?.value === "on" ? Color.Green : Color.SecondaryText,
-            }}
-          >
-            <MenuBarExtra.Item
-              title={device.status?.switch?.switch?.value === "on" ? "Turn Off" : "Turn On"}
-              icon={Icon.Power}
-              onAction={() => handleLightToggle(device)}
-            />
-            {device.status?.switchLevel !== undefined && (
-              <>
-                <MenuBarExtra.Separator />
+        {lights
+          .sort((a, b) => {
+            // First sort by status (on lights first)
+            const aIsOn = a.status?.switch?.switch?.value === "on";
+            const bIsOn = b.status?.switch?.switch?.value === "on";
+            if (aIsOn !== bIsOn) return bIsOn ? 1 : -1;
+            
+            // Finally sort by name
+            return a.label.localeCompare(b.label);
+          })
+          .map((device) => {
+            const brightness = device.status?.switchLevel?.level?.value;
+            const isDimmable = device.status?.switchLevel !== undefined;
+            const displayTitle = isDimmable ? 
+              `${device.label} (${brightness || 0}%)` : 
+              device.label;
+
+            return (
+              <MenuBarExtra.Submenu
+                key={device.deviceId}
+                title={displayTitle}
+                icon={{
+                  source: Icon.LightBulb,
+                  tintColor: device.status?.switch?.switch?.value === "on" ? Color.Green : Color.SecondaryText,
+                }}
+              >
                 <MenuBarExtra.Item
-                  title="100% Brightness"
-                  onAction={() => handleBrightnessChange(device, 100)}
+                  title={device.status?.switch?.switch?.value === "on" ? "Turn Off" : "Turn On"}
+                  icon={Icon.Power}
+                  onAction={() => handleLightToggle(device)}
                 />
-                <MenuBarExtra.Item
-                  title="75% Brightness"
-                  onAction={() => handleBrightnessChange(device, 75)}
-                />
-                <MenuBarExtra.Item
-                  title="50% Brightness"
-                  onAction={() => handleBrightnessChange(device, 50)}
-                />
-                <MenuBarExtra.Item
-                  title="25% Brightness"
-                  onAction={() => handleBrightnessChange(device, 25)}
-                />
-                <MenuBarExtra.Item
-                  title="10% Brightness"
-                  onAction={() => handleBrightnessChange(device, 10)}
-                />
-              </>
-            )}
-          </MenuBarExtra.Submenu>
-        ))}
+                {isDimmable && (
+                  <>
+                    <MenuBarExtra.Separator />
+                    <MenuBarExtra.Item
+                      title="Brightness"
+                    />
+                    <MenuBarExtra.Item
+                      title="100%"
+                      onAction={() => handleBrightnessChange(device, 100)}
+                    />
+                    <MenuBarExtra.Item
+                      title="75%"
+                      onAction={() => handleBrightnessChange(device, 75)}
+                    />
+                    <MenuBarExtra.Item
+                      title="50%"
+                      onAction={() => handleBrightnessChange(device, 50)}
+                    />
+                    <MenuBarExtra.Item
+                      title="25%"
+                      onAction={() => handleBrightnessChange(device, 25)}
+                    />
+                    <MenuBarExtra.Item
+                      title="10%"
+                      onAction={() => handleBrightnessChange(device, 10)}
+                    />
+                  </>
+                )}
+              </MenuBarExtra.Submenu>
+            );
+          })}
       </MenuBarExtra.Section>
 
       <MenuBarExtra.Section title="Scenes">

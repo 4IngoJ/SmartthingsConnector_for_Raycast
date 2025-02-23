@@ -30,7 +30,7 @@ declare namespace Preferences {
   export type ShowAllDevices = ExtensionPreferences & {}
   /** Preferences accessible in the `menu-bar-home-monitor` command */
   export type MenuBarHomeMonitor = ExtensionPreferences & {
-  /** Enable Background Refresh - Automatically refresh the location mode every 10 seconds */
+  /** Enable Background Refresh - Automatically refresh the location mode every minute */
   "enableBackgroundRefresh": boolean
 }
 }

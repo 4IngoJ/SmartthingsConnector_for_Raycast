@@ -50,7 +50,7 @@
         {
           "name": "enableBackgroundRefresh",
           "title": "Enable Background Refresh",
-          "description": "Automatically refresh the location mode every 10 seconds",
+          "description": "Automatically refresh the location mode every minute",
           "type": "checkbox",
           "required": false,
           "default": false,
