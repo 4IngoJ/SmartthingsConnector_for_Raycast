@@ -1,132 +1,117 @@
 import {
   List,
   showToast,
-  ToastStyle,
+  Toast,
   ActionPanel,
   Icon,
-  // useNavigation, // Entfernen Sie diesen Import
   Action,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
 import {
   fetchCurrentLocationMode,
-  fetchLocationId,
   fetchLocationModes,
   switchLocationMode,
 } from "./fetchDevices";
-import { LocationMode } from "./types"; // Erstellen Sie diese Datei mit den entsprechenden Typdefinitionen
+import { LocationMode } from "./types";
 
 export default function ShowLocationMode() {
-  const [currentMode, setCurrentMode] = useState<string | null>(null);
+  const [currentMode, setCurrentMode] = useState<LocationMode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [locationId, setLocationId] = useState<string | null>(null);
-  const [modes, setModes] = useState<string[]>([]);
+  const [modes, setModes] = useState<LocationMode[]>([]);
 
+  // Function to fetch and update current mode
+  const updateCurrentMode = async () => {
+    try {
+      const currentModeData = await fetchCurrentLocationMode();
+      if (currentModeData?.mode) {
+        setCurrentMode({
+          id: currentModeData.mode.id,
+          name: currentModeData.mode.name,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching current mode:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to fetch current mode",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
+
+  // Initial data fetch
   useEffect(() => {
     async function fetchData() {
       try {
-        const locId = await fetchLocationId();
-        setLocationId(locId);
-
-        if (!locId) {
-          showToast(ToastStyle.Failure, "No location found");
-          setIsLoading(false);
-          return;
+        // Fetch available modes
+        const availableModes = await fetchLocationModes();
+        if (Array.isArray(availableModes)) {
+          setModes(availableModes);
         }
 
-        const currentModeData = await fetchCurrentLocationMode(); // Argument entfernt
-        if (
-          currentModeData &&
-          currentModeData.mode &&
-          currentModeData.mode.name
-        ) {
-          setCurrentMode(currentModeData.mode.name); // Set current mode name
-        } else {
-          showToast(ToastStyle.Failure, "Current mode name not available");
-        }
-
-        const availableModes = await fetchLocationModes(); // Argument entfernt
-        setModes(availableModes.map((mode: LocationMode) => mode.name)); // Typ 'any' explizit angeben
-        setIsLoading(false);
+        // Fetch current mode
+        await updateCurrentMode();
       } catch (error) {
-        showToast(
-          ToastStyle.Failure,
-          "Failed to fetch data",
-          (error as Error).message,
-        ); // Typ 'Error' explizit angeben
+        console.error("Error in fetchData:", error);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to fetch data",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      } finally {
         setIsLoading(false);
       }
     }
     fetchData();
   }, []);
 
-  const handleSwitchMode = async (newModeName: string) => {
+  const handleSwitchMode = async (mode: LocationMode) => {
     try {
-      if (!locationId) return;
-
-      const modes = await fetchLocationModes(); // Argument entfernt
-      const newMode = modes.find(
-        (mode: LocationMode) =>
-          mode.name.toLowerCase() === newModeName.toLowerCase(),
-      ); // Typ 'any' explizit angeben
-      if (newMode) {
-        await switchLocationMode(newMode.id); // Argument 'locationId' entfernt
-        const updatedMode = await fetchCurrentLocationMode(); // Argument 'locationId' entfernt
-        if (updatedMode && updatedMode.mode && updatedMode.mode.name) {
-          setCurrentMode(updatedMode.mode.name); // Update currentMode state
-        } else {
-          showToast(ToastStyle.Failure, "Updated mode name not available");
-        }
-        showToast(ToastStyle.Success, "Location mode changed successfully");
-      } else {
-        showToast(ToastStyle.Failure, "Invalid mode name");
-      }
+      setIsLoading(true);
+      await switchLocationMode(mode.id);
+      await updateCurrentMode(); // Fetch the updated mode after switching
+      
+      showToast({
+        style: Toast.Style.Success,
+        title: "Mode Changed",
+        message: `Successfully switched to ${mode.name}`,
+      });
     } catch (error) {
-      showToast(
-        ToastStyle.Failure,
-        "Failed to change location mode",
-        (error as Error).message,
-      ); // Typ 'Error' explizit angeben
+      console.error("Error switching mode:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to change mode",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <List isLoading={isLoading} searchBarPlaceholder="Current Location Mode">
-      {modes.length > 0 && (
-        <>
-          {modes.map((mode, index) => (
-            <List.Item
-              key={index}
-              title={mode}
-              accessoryIcon={mode === currentMode ? Icon.Checkmark : undefined}
-              actions={
-                mode === currentMode ? (
-                  <ActionPanel>
-                    <Action
-                      title="Current Mode"
-                      icon={Icon.Checkmark}
-                      onAction={undefined} // Aktion deaktivieren
-                    />
-                  </ActionPanel>
-                ) : (
-                  <ActionPanel>
-                    <Action
-                      title="Switch Location Mode"
-                      onAction={() => handleSwitchMode(mode)}
-                    />
-                  </ActionPanel>
-                )
-              }
-            />
-          ))}
-        </>
-      )}
-      {!isLoading && modes.length === 0 && (
-        <List.EmptyView
-          title="No Location Modes"
-          description="No location modes found for this location."
+    <List isLoading={isLoading} searchBarPlaceholder="Search location modes...">
+      {modes.map((mode) => (
+        <List.Item
+          key={mode.id}
+          title={mode.name}
+          icon={
+            currentMode?.id === mode.id
+              ? { source: Icon.CheckCircle }
+              : { source: Icon.Circle }
+          }
+          actions={
+            <ActionPanel>
+              {currentMode?.id !== mode.id && (
+                <Action
+                  title={`Switch to ${mode.name}`}
+                  onAction={() => handleSwitchMode(mode)}
+                  icon={Icon.Switch}
+                />
+              )}
+            </ActionPanel>
+          }
         />
-      )}
+      ))}
     </List>
   );
 }

@@ -63,40 +63,37 @@ export async function fetchDevices(): Promise<Device[]> {
 export async function fetchLocationModes() {
   try {
     const response = await api.get(
-      `/locations/${SMARTTHINGS_LOCATION_ID}/modes`,
+      `/locations/${SMARTTHINGS_LOCATION_ID}/modes`
     );
     return response.data.items;
   } catch (error) {
-    throw new Error(
-      `Failed to fetch location modes: ${(error as Error).message}`,
-    ); // Typ 'Error' explizit angeben
+    console.error("Error fetching location modes:", error);
+    throw error;
   }
 }
 
 export async function fetchCurrentLocationMode() {
   try {
     const response = await api.get(
-      `/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`,
+      `/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`
     );
-    return response.data.mode;
+    return response.data;
   } catch (error) {
-    throw new Error(
-      `Failed to fetch current location mode: ${(error as Error).message}`,
-    );
+    console.error("Error fetching current mode:", error);
+    throw error;
   }
 }
 
 export async function switchLocationMode(modeId: string) {
   try {
-    await api.put(`/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`, {
-      modeId,
-    });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to switch location mode: ${error.message}`);
-    } else {
-      throw new Error("Failed to switch location mode: Unknown error");
-    }
+    const response = await api.put(
+      `/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`,
+      { modeId }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error switching mode:", error);
+    throw error;
   }
 }
 
