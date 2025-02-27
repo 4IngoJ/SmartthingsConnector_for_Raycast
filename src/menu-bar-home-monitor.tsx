@@ -59,6 +59,9 @@ interface Device {
       };
     };
   };
+  components?: Array<{
+    categories: Array<{ name: string }>;
+  }>;
 }
 
 export default function Command() {
@@ -211,15 +214,19 @@ export default function Command() {
     try {
       const devices = await fetchDevices();
       const lightDevices = devices
-        .filter((device: ApiDevice) => 
+        .filter((device) => 
           device.components?.some(component => 
             component.categories?.some(category => category.name === "Light")
           )
         )
-        .map((device: ApiDevice): Device => ({
+        .map((device): Device => ({
           deviceId: device.deviceId,
           label: device.label || device.deviceId,
-          status: device.status
+          status: device.status,
+          components: device.components?.map(component => ({
+            ...component,
+            categories: component.categories || []
+          }))
         }));
 
       setLights(lightDevices);

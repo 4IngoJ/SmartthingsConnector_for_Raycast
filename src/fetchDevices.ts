@@ -1,7 +1,6 @@
 import axios from "axios";
 import { getPreferenceValues } from "@raycast/api";
-// Stellen Sie sicher, dass der Pfad korrekt ist
-import type { Device as ImportedDevice, DeviceStatus } from "./types.ts";
+import type { Device, ApiDevice, DeviceStatus } from "./types";
 
 const preferences = getPreferenceValues();
 const SMARTTHINGS_API_URL = "https://api.smartthings.com/v1";
@@ -41,21 +40,15 @@ async function fetchDeviceStatuses(deviceIds: string[]): Promise<{
   );
 }
 
-interface Device extends ImportedDevice {
-  deviceId: string;
-  deviceTypeName: string;
-  // andere Eigenschaften...
-}
-
-export async function fetchDevices(): Promise<Device[]> {
+export async function fetchDevices(): Promise<ApiDevice[]> {
   const devices = await fetchAllDeviceDetails();
-  const deviceIds = devices.map((device: Device) => device.deviceId);
+  const deviceIds = devices.map((device: ApiDevice) => device.deviceId);
   const statuses = await fetchDeviceStatuses(deviceIds);
 
-  return devices.map((device: Device) => ({
+  return devices.map((device: ApiDevice) => ({
     ...device,
-    status: statuses[device.deviceId].components.main,
-    roomName: statuses[device.deviceId].roomName,
+    status: statuses[device.deviceId]?.components?.main,
+    roomName: statuses[device.deviceId]?.roomName,
     deviceType: device.deviceTypeName,
   }));
 }
