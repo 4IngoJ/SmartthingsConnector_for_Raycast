@@ -3,7 +3,7 @@ export type DeviceCategory = string;
 export interface Device {
   deviceId: string;
   label: string;
-  deviceTypeName?: string;
+  deviceTypeName: string;
   components?: Array<{
     categories?: Array<{ name: string }>;
     capabilities?: Array<{ timestamp: string }>;

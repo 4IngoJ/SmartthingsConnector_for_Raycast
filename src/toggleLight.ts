@@ -5,7 +5,7 @@ const SMARTTHINGS_API_URL = "https://api.smartthings.com/v1/devices";
 
 export async function toggleLight(deviceId: string, currentStatus: string) {
   const preferences = getPreferenceValues();
-  const SMARTTHINGS_API_TOKEN = preferences.apiToken; // Retrieve the API token from preferences
+  const SMARTTHINGS_API_TOKEN = preferences.apiToken;
 
   const newStatus = currentStatus === "on" ? "off" : "on";
 
@@ -31,7 +31,7 @@ export async function toggleLight(deviceId: string, currentStatus: string) {
 
     return newStatus;
   } catch (error) {
-    console.error("Failed to toggle light:", (error as Error).message); // Typ 'Error' explizit angeben
+    console.error("Failed to toggle light:", (error as Error).message);
     throw error;
   }
 }
@@ -47,11 +47,6 @@ export async function setLightLevel(deviceId: string, level: number) {
         commands: [
           {
             component: "main",
-            capability: "switch",
-            command: "on",
-          },
-          {
-            component: "main",
             capability: "switchLevel",
             command: "setLevel",
             arguments: [level],
@@ -65,8 +60,6 @@ export async function setLightLevel(deviceId: string, level: number) {
         },
       }
     );
-
-    return level;
   } catch (error) {
     console.error("Failed to set light level:", (error as Error).message);
     throw error;

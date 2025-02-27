@@ -1,6 +1,6 @@
 # SmartThings Connector Changelog
 
-## [Initial Version] - {PR_MERGE_DATE}
+## [Initial Version] - 2024-03-19
 
 - Add menu bar monitoring of SmartThings home mode
 - Support for viewing and controlling lights
@@ -10,9 +10,11 @@
 - Add device status monitoring
 - Add support for dimming controls
 
-## [Next Version] - yyyy-mm-dd
-- Updated ESLint configuration to be compatible with Raycast's publishing checks.
-- Temporarily set `@typescript-eslint/no-explicit-any` rule to "warn" to allow for gradual type improvements.
+## [Next Version] - 2024-03-19
+- Updated ESLint configuration to be compatible with Raycast's publishing checks
+- Improved error handling in API calls
+- Added better type safety throughout the application
+- Fixed formatting issues across all source files
 
 ## [Previous Version] - yyyy-mm-dd
 ...

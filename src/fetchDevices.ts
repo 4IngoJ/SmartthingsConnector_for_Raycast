@@ -1,6 +1,6 @@
 import axios from "axios";
 import { getPreferenceValues } from "@raycast/api";
-import type { ApiDevice, DeviceStatus } from "./types";
+import type { Device, DeviceStatus } from "./types";
 
 const preferences = getPreferenceValues();
 const SMARTTHINGS_API_URL = "https://api.smartthings.com/v1";
@@ -40,15 +40,15 @@ async function fetchDeviceStatuses(deviceIds: string[]): Promise<{
   );
 }
 
-export async function fetchDevices(): Promise<ApiDevice[]> {
+export async function fetchDevices(): Promise<Device[]> {
   const devices = await fetchAllDeviceDetails();
-  const deviceIds = devices.map((device: ApiDevice) => device.deviceId);
+  const deviceIds = devices.map((device: Device) => device.deviceId);
   const statuses = await fetchDeviceStatuses(deviceIds);
 
-  return devices.map((device: ApiDevice) => ({
+  return devices.map((device: Device) => ({
     ...device,
-    status: statuses[device.deviceId]?.components?.main,
-    roomName: statuses[device.deviceId]?.roomName,
+    status: statuses[device.deviceId].components.main,
+    roomName: statuses[device.deviceId].roomName,
     deviceType: device.deviceTypeName,
   }));
 }
@@ -81,9 +81,12 @@ export async function switchLocationMode(modeId: string) {
       modeId,
     });
     return response.data;
-  } catch (error) {
-    console.error("Error switching mode:", error);
-    throw error;
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to switch location mode: ${error.message}`);
+    } else {
+      throw new Error("Failed to switch location mode: Unknown error");
+    }
   }
 }
 
