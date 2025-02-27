@@ -26,7 +26,7 @@ export async function toggleLight(deviceId: string, currentStatus: string) {
           Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
           "Content-Type": "application/json",
         },
-      },
+      }
     );
 
     return newStatus;
@@ -48,21 +48,21 @@ export async function setLightLevel(deviceId: string, level: number) {
           {
             component: "main",
             capability: "switch",
-            command: "on"
+            command: "on",
           },
           {
             component: "main",
             capability: "switchLevel",
             command: "setLevel",
-            arguments: [level]
-          }
-        ]
+            arguments: [level],
+          },
+        ],
       },
       {
         headers: {
           Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       }
     );
 

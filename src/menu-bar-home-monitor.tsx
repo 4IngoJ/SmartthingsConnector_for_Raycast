@@ -1,7 +1,11 @@
 import { MenuBarExtra, Icon, showToast, Toast, Color, getPreferenceValues } from "@raycast/api";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode, fetchDevices } from "./fetchDevices";
-import { fetchRooms } from "./fetchRooms";
+import {
+  fetchCurrentLocationMode,
+  fetchLocationModes,
+  switchLocationMode,
+  fetchDevices,
+} from "./fetchDevices";
 import { toggleLight, setLightLevel } from "./toggleLight";
 import { LocationMode } from "./types";
 import axios from "axios";
@@ -19,28 +23,6 @@ interface Scene {
   sceneId: string;
   sceneName: string;
   lastExecutedDate?: string;
-}
-
-interface ApiDevice {
-  deviceId: string;
-  label: string;
-  roomId: string;
-  components: Array<{
-    categories: Array<{ name: string }>;
-  }>;
-  status?: {
-    switch?: {
-      switch?: {
-        value?: string;
-        timestamp?: string;
-      };
-    };
-    switchLevel?: {
-      level?: {
-        value?: number;
-      };
-    };
-  };
 }
 
 interface Device {
@@ -98,18 +80,21 @@ export default function Command() {
       console.log("\n=== Background Refresh Details ===");
       console.log("Timestamp:", timestamp);
       console.log("Current Settings:");
-      console.log("- Background Refresh:", preferencesRef.current.enableBackgroundRefresh ? "Enabled" : "Disabled");
-      
+      console.log(
+        "- Background Refresh:",
+        preferencesRef.current.enableBackgroundRefresh ? "Enabled" : "Disabled"
+      );
+
       const modeData = await fetchCurrentLocationMode();
       console.log("API Response:", JSON.stringify(modeData, null, 2));
-      
+
       if (modeData?.id) {
         const newMode = {
           id: modeData.id,
           name: modeData.label || modeData.name,
         };
-        
-        setCurrentMode(prev => {
+
+        setCurrentMode((prev) => {
           if (prev.id !== newMode.id || prev.name !== newMode.name) {
             console.log("\nMode Change Detected:", { prev, new: newMode });
             return newMode;
@@ -122,29 +107,27 @@ export default function Command() {
     }
   }, []);
 
-  const handleModeSwitch = useCallback(async (mode: LocationMode) => {
-    try {
-      await switchLocationMode(mode.id);
-      await updateCurrentMode();
-      showToast({
-        style: Toast.Style.Success,
-        title: "Mode Changed",
-        message: `Successfully switched to ${mode.name}`,
-      });
-    } catch (error) {
-      console.error("Error switching mode:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to change mode",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }, [updateCurrentMode]);
-
-  const handleManualRefresh = useCallback(async () => {
-    console.log("\n=== Manual Refresh Triggered ===");
-    await Promise.all([updateCurrentMode(), loadModes()]);
-  }, [updateCurrentMode, loadModes]);
+  const handleModeSwitch = useCallback(
+    async (mode: LocationMode) => {
+      try {
+        await switchLocationMode(mode.id);
+        await updateCurrentMode();
+        showToast({
+          style: Toast.Style.Success,
+          title: "Mode Changed",
+          message: `Successfully switched to ${mode.name}`,
+        });
+      } catch (error) {
+        console.error("Error switching mode:", error);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to change mode",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+    [updateCurrentMode]
+  );
 
   const setupBackgroundRefresh = useCallback(() => {
     if (intervalRef.current) {
@@ -154,7 +137,7 @@ export default function Command() {
 
     if (preferencesRef.current.enableBackgroundRefresh) {
       console.log("\n=== Setting up Background Refresh ===");
-      
+
       intervalRef.current = setInterval(() => {
         if (isActiveRef.current) {
           updateCurrentMode();
@@ -174,7 +157,7 @@ export default function Command() {
           },
         }
       );
-      
+
       console.log("Fetched Scenes:", response.data);
       setScenes(response.data.items);
     } catch (error) {
@@ -183,51 +166,52 @@ export default function Command() {
   }, [preferences.apiToken, preferences.locationId]);
 
   // Execute a scene
-  const handleSceneExecution = useCallback(async (sceneId: string, sceneName: string) => {
-    try {
-      await axios.post(
-        `https://api.smartthings.com/v1/scenes/${sceneId}/execute`,
-        null,
-        {
+  const handleSceneExecution = useCallback(
+    async (sceneId: string, sceneName: string) => {
+      try {
+        await axios.post(`https://api.smartthings.com/v1/scenes/${sceneId}/execute`, null, {
           headers: {
             Authorization: `Bearer ${preferences.apiToken}`,
           },
-        }
-      );
-      showToast({
-        style: Toast.Style.Success,
-        title: "Scene Activated",
-        message: `Successfully executed ${sceneName}`,
-      });
-    } catch (error) {
-      console.error("Failed to execute scene:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to Execute Scene",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }, [preferences.apiToken]);
+        });
+        showToast({
+          style: Toast.Style.Success,
+          title: "Scene Activated",
+          message: `Successfully executed ${sceneName}`,
+        });
+      } catch (error) {
+        console.error("Failed to execute scene:", error);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to Execute Scene",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+    [preferences.apiToken]
+  );
 
   // Load lights from SmartThings API
   const loadLights = useCallback(async () => {
     try {
       const devices = await fetchDevices();
       const lightDevices = devices
-        .filter((device) => 
-          device.components?.some(component => 
-            component.categories?.some(category => category.name === "Light")
+        .filter((device) =>
+          device.components?.some((component) =>
+            component.categories?.some((category) => category.name === "Light")
           )
         )
-        .map((device): Device => ({
-          deviceId: device.deviceId,
-          label: device.label || device.deviceId,
-          status: device.status,
-          components: device.components?.map(component => ({
-            ...component,
-            categories: component.categories || []
-          }))
-        }));
+        .map(
+          (device): Device => ({
+            deviceId: device.deviceId,
+            label: device.label || device.deviceId,
+            status: device.status,
+            components: device.components?.map((component) => ({
+              ...component,
+              categories: component.categories || [],
+            })),
+          })
+        );
 
       setLights(lightDevices);
       console.log("Fetched Lights:", lightDevices);
@@ -237,54 +221,60 @@ export default function Command() {
   }, []);
 
   // Handle light toggle
-  const handleLightToggle = useCallback(async (device: Device) => {
-    try {
-      const currentStatus = device.status?.switch?.switch?.value || "off";
-      await toggleLight(device.deviceId, currentStatus);
-      await loadLights(); // Refresh lights after toggle
-      
-      showToast({
-        style: Toast.Style.Success,
-        title: "Light Toggled",
-        message: `${device.label} turned ${currentStatus === "on" ? "off" : "on"}`,
-      });
-    } catch (error) {
-      console.error("Failed to toggle light:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to Toggle Light",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }, [loadLights]);
+  const handleLightToggle = useCallback(
+    async (device: Device) => {
+      try {
+        const currentStatus = device.status?.switch?.switch?.value || "off";
+        await toggleLight(device.deviceId, currentStatus);
+        await loadLights(); // Refresh lights after toggle
+
+        showToast({
+          style: Toast.Style.Success,
+          title: "Light Toggled",
+          message: `${device.label} turned ${currentStatus === "on" ? "off" : "on"}`,
+        });
+      } catch (error) {
+        console.error("Failed to toggle light:", error);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to Toggle Light",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+    [loadLights]
+  );
 
   // Handle brightness change
-  const handleBrightnessChange = useCallback(async (device: Device, level: number) => {
-    try {
-      await setLightLevel(device.deviceId, level);
-      await loadLights(); // Refresh lights after change
-      
-      showToast({
-        style: Toast.Style.Success,
-        title: "Brightness Changed",
-        message: `${device.label} set to ${level}%`,
-      });
-    } catch (error) {
-      console.error("Failed to change brightness:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to Change Brightness",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }, [loadLights]);
+  const handleBrightnessChange = useCallback(
+    async (device: Device, level: number) => {
+      try {
+        await setLightLevel(device.deviceId, level);
+        await loadLights(); // Refresh lights after change
+
+        showToast({
+          style: Toast.Style.Success,
+          title: "Brightness Changed",
+          message: `${device.label} set to ${level}%`,
+        });
+      } catch (error) {
+        console.error("Failed to change brightness:", error);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to Change Brightness",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+    [loadLights]
+  );
 
   useEffect(() => {
     isActiveRef.current = true;
     preferencesRef.current = preferences;
-    
+
     console.log("\n=== Initializing Menu Bar Monitor ===");
-    
+
     // Initial load of all data
     updateCurrentMode();
     loadModes();
@@ -298,13 +288,20 @@ export default function Command() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [preferences.enableBackgroundRefresh, setupBackgroundRefresh, updateCurrentMode, loadModes, loadScenes, loadLights]);
+  }, [
+    preferences.enableBackgroundRefresh,
+    setupBackgroundRefresh,
+    updateCurrentMode,
+    loadModes,
+    loadScenes,
+    loadLights,
+  ]);
 
   return (
     <MenuBarExtra
       icon="smartthings_white.png"
       title={currentMode.name}
-      tooltip={`Current Home Mode${preferences.enableBackgroundRefresh ? ' (Auto-refresh: 1m)' : ''}`}
+      tooltip={`Current Home Mode${preferences.enableBackgroundRefresh ? " (Auto-refresh: 1m)" : ""}`}
     >
       <MenuBarExtra.Section title="Switch Mode">
         {availableModes.map((mode) => (
@@ -327,16 +324,16 @@ export default function Command() {
             const aIsOn = a.status?.switch?.switch?.value === "on";
             const bIsOn = b.status?.switch?.switch?.value === "on";
             if (aIsOn !== bIsOn) return bIsOn ? 1 : -1;
-            
+
             // Finally sort by name
             return a.label.localeCompare(b.label);
           })
           .map((device) => {
             const brightness = device.status?.switchLevel?.level?.value;
             const isDimmable = device.status?.switchLevel !== undefined;
-            const displayTitle = isDimmable ? 
-              `${device.label} (${brightness || 0}%)` : 
-              device.label;
+            const displayTitle = isDimmable
+              ? `${device.label} (${brightness || 0}%)`
+              : device.label;
 
             return (
               <MenuBarExtra.Submenu
@@ -344,7 +341,10 @@ export default function Command() {
                 title={displayTitle}
                 icon={{
                   source: Icon.LightBulb,
-                  tintColor: device.status?.switch?.switch?.value === "on" ? Color.Green : Color.SecondaryText,
+                  tintColor:
+                    device.status?.switch?.switch?.value === "on"
+                      ? Color.Green
+                      : Color.SecondaryText,
                 }}
               >
                 <MenuBarExtra.Item
@@ -355,9 +355,7 @@ export default function Command() {
                 {isDimmable && (
                   <>
                     <MenuBarExtra.Separator />
-                    <MenuBarExtra.Item
-                      title="Brightness"
-                    />
+                    <MenuBarExtra.Item title="Brightness" />
                     <MenuBarExtra.Item
                       title="100%"
                       onAction={() => handleBrightnessChange(device, 100)}
@@ -392,10 +390,14 @@ export default function Command() {
             title={scene.sceneName}
             icon={Icon.Play}
             onAction={() => handleSceneExecution(scene.sceneId, scene.sceneName)}
-            tooltip={scene.lastExecutedDate ? `Last executed: ${new Date(scene.lastExecutedDate).toLocaleString()}` : 'Never executed'}
+            tooltip={
+              scene.lastExecutedDate
+                ? `Last executed: ${new Date(scene.lastExecutedDate).toLocaleString()}`
+                : "Never executed"
+            }
           />
         ))}
       </MenuBarExtra.Section>
     </MenuBarExtra>
   );
-} 
+}

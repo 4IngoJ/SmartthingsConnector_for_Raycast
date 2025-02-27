@@ -62,18 +62,12 @@ export default function Command() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [roomsData, devicesData] = await Promise.all([
-        fetchRooms(),
-        fetchDevices(),
-      ]);
+      const [roomsData, devicesData] = await Promise.all([fetchRooms(), fetchDevices()]);
 
-      const roomsMap = roomsData.reduce(
-        (acc: { [key: string]: string }, room: Room) => {
-          acc[room.roomId] = room.name;
-          return acc;
-        },
-        {},
-      );
+      const roomsMap = roomsData.reduce((acc: { [key: string]: string }, room: Room) => {
+        acc[room.roomId] = room.name;
+        return acc;
+      }, {});
       setRooms(roomsMap);
 
       const lightDevices: Device[] = (devicesData as unknown as ApiDevice[])
@@ -88,9 +82,7 @@ export default function Command() {
               (component) =>
                 component.categories &&
                 Array.isArray(component.categories) &&
-                component.categories.some(
-                  (category) => category.name === "Light",
-                ),
+                component.categories.some((category) => category.name === "Light")
             )
           );
         })
@@ -124,9 +116,7 @@ export default function Command() {
         (device: Device) =>
           device.label.toLowerCase().includes(searchText.toLowerCase()) ||
           (rooms[device.roomId] &&
-            rooms[device.roomId]
-              .toLowerCase()
-              .includes(searchText.toLowerCase())),
+            rooms[device.roomId].toLowerCase().includes(searchText.toLowerCase()))
       );
       setFilteredDevices(filtered);
     }
@@ -157,14 +147,14 @@ export default function Command() {
                     },
                   },
                 }
-              : d,
-          ),
+              : d
+          )
         );
       } catch (error) {
         showToast(
           ToastStyle.Failure,
           "Fehler beim Umschalten des Lichts",
-          (error as Error).message,
+          (error as Error).message
         );
       }
     }
@@ -226,17 +216,21 @@ export default function Command() {
                                     status: {
                                       ...d.status,
                                       switch: {
-                                        switch: { value: "on" }
+                                        switch: { value: "on" },
                                       },
-                                      switchLevel: { level: { value: 100 } }
-                                    }
+                                      switchLevel: { level: { value: 100 } },
+                                    },
                                   }
                                 : d
                             )
                           );
                           await showToast(ToastStyle.Success, "Brightness set to 100%");
                         } catch (error) {
-                          showToast(ToastStyle.Failure, "Failed to set brightness", (error as Error).message);
+                          showToast(
+                            ToastStyle.Failure,
+                            "Failed to set brightness",
+                            (error as Error).message
+                          );
                         }
                       }}
                     />
@@ -253,17 +247,21 @@ export default function Command() {
                                     status: {
                                       ...d.status,
                                       switch: {
-                                        switch: { value: "on" }
+                                        switch: { value: "on" },
                                       },
-                                      switchLevel: { level: { value: 75 } }
-                                    }
+                                      switchLevel: { level: { value: 75 } },
+                                    },
                                   }
                                 : d
                             )
                           );
                           await showToast(ToastStyle.Success, "Brightness set to 75%");
                         } catch (error) {
-                          showToast(ToastStyle.Failure, "Failed to set brightness", (error as Error).message);
+                          showToast(
+                            ToastStyle.Failure,
+                            "Failed to set brightness",
+                            (error as Error).message
+                          );
                         }
                       }}
                     />
@@ -280,17 +278,21 @@ export default function Command() {
                                     status: {
                                       ...d.status,
                                       switch: {
-                                        switch: { value: "on" }
+                                        switch: { value: "on" },
                                       },
-                                      switchLevel: { level: { value: 50 } }
-                                    }
+                                      switchLevel: { level: { value: 50 } },
+                                    },
                                   }
                                 : d
                             )
                           );
                           await showToast(ToastStyle.Success, "Brightness set to 50%");
                         } catch (error) {
-                          showToast(ToastStyle.Failure, "Failed to set brightness", (error as Error).message);
+                          showToast(
+                            ToastStyle.Failure,
+                            "Failed to set brightness",
+                            (error as Error).message
+                          );
                         }
                       }}
                     />
@@ -307,17 +309,21 @@ export default function Command() {
                                     status: {
                                       ...d.status,
                                       switch: {
-                                        switch: { value: "on" }
+                                        switch: { value: "on" },
                                       },
-                                      switchLevel: { level: { value: 25 } }
-                                    }
+                                      switchLevel: { level: { value: 25 } },
+                                    },
                                   }
                                 : d
                             )
                           );
                           await showToast(ToastStyle.Success, "Brightness set to 25%");
                         } catch (error) {
-                          showToast(ToastStyle.Failure, "Failed to set brightness", (error as Error).message);
+                          showToast(
+                            ToastStyle.Failure,
+                            "Failed to set brightness",
+                            (error as Error).message
+                          );
                         }
                       }}
                     />
@@ -334,17 +340,21 @@ export default function Command() {
                                     status: {
                                       ...d.status,
                                       switch: {
-                                        switch: { value: "on" }
+                                        switch: { value: "on" },
                                       },
-                                      switchLevel: { level: { value: 10 } }
-                                    }
+                                      switchLevel: { level: { value: 10 } },
+                                    },
                                   }
                                 : d
                             )
                           );
                           await showToast(ToastStyle.Success, "Brightness set to 10%");
                         } catch (error) {
-                          showToast(ToastStyle.Failure, "Failed to set brightness", (error as Error).message);
+                          showToast(
+                            ToastStyle.Failure,
+                            "Failed to set brightness",
+                            (error as Error).message
+                          );
                         }
                       }}
                     />

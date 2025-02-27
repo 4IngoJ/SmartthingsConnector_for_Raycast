@@ -1,6 +1,6 @@
 import axios from "axios";
 import { getPreferenceValues } from "@raycast/api";
-import type { Device, ApiDevice, DeviceStatus } from "./types";
+import type { ApiDevice, DeviceStatus } from "./types";
 
 const preferences = getPreferenceValues();
 const SMARTTHINGS_API_URL = "https://api.smartthings.com/v1";
@@ -31,12 +31,12 @@ async function fetchDeviceStatuses(deviceIds: string[]): Promise<{
         [key: string]: { components: { main: DeviceStatus }; roomName: string };
       },
       res,
-      index,
+      index
     ) => {
       acc[deviceIds[index]] = res.data;
       return acc;
     },
-    {},
+    {}
   );
 }
 
@@ -55,9 +55,7 @@ export async function fetchDevices(): Promise<ApiDevice[]> {
 
 export async function fetchLocationModes() {
   try {
-    const response = await api.get(
-      `/locations/${SMARTTHINGS_LOCATION_ID}/modes`
-    );
+    const response = await api.get(`/locations/${SMARTTHINGS_LOCATION_ID}/modes`);
     console.log("Location modes API response:", response.data);
     return response.data.items;
   } catch (error) {
@@ -68,9 +66,7 @@ export async function fetchLocationModes() {
 
 export async function fetchCurrentLocationMode() {
   try {
-    const response = await api.get(
-      `/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`
-    );
+    const response = await api.get(`/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`);
     console.log("Current mode API response:", response.data);
     return response.data;
   } catch (error) {
@@ -81,10 +77,9 @@ export async function fetchCurrentLocationMode() {
 
 export async function switchLocationMode(modeId: string) {
   try {
-    const response = await api.put(
-      `/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`,
-      { modeId }
-    );
+    const response = await api.put(`/locations/${SMARTTHINGS_LOCATION_ID}/modes/current`, {
+      modeId,
+    });
     return response.data;
   } catch (error) {
     console.error("Error switching mode:", error);

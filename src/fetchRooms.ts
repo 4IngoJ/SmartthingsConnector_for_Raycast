@@ -14,7 +14,7 @@ export async function fetchRooms() {
         headers: {
           Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
         },
-      },
+      }
     );
     console.log("Rooms payload:", response.data);
     return response.data.items;
@@ -36,9 +36,7 @@ export async function fetchDevicesInRoom(roomId: any) {
         Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
       },
     });
-    const devices = response.data.items.filter(
-      (device: any) => device.roomId === roomId,
-    ); // Typ 'any' explizit angeben
+    const devices = response.data.items.filter((device: any) => device.roomId === roomId); // Typ 'any' explizit angeben
     return devices;
   } catch (error) {
     console.error("Failed to fetch devices:", (error as Error).message); // Typ 'Error' explizit angeben

@@ -1,18 +1,6 @@
-import {
-  List,
-  showToast,
-  Toast,
-  ActionPanel,
-  Icon,
-  Action,
-  Color,
-} from "@raycast/api";
+import { List, showToast, Toast, ActionPanel, Icon, Action, Color } from "@raycast/api";
 import { useEffect, useState } from "react";
-import {
-  fetchCurrentLocationMode,
-  fetchLocationModes,
-  switchLocationMode,
-} from "./fetchDevices";
+import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
 import { LocationMode } from "./types";
 
 export default function ShowLocationMode() {
@@ -26,7 +14,7 @@ export default function ShowLocationMode() {
       const currentModeData = await fetchCurrentLocationMode();
       // Log the response to see the structure
       console.log("Current mode data:", currentModeData);
-      
+
       // Update how we handle the response based on the API structure
       if (currentModeData) {
         setCurrentMode({
@@ -76,7 +64,7 @@ export default function ShowLocationMode() {
       setIsLoading(true);
       await switchLocationMode(mode.id);
       await updateCurrentMode(); // Fetch the updated mode after switching
-      
+
       showToast({
         style: Toast.Style.Success,
         title: "Mode Changed",
