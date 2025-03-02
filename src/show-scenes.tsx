@@ -49,9 +49,9 @@ export default function ShowScenes() {
           Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
         },
       });
-      showToast(ToastStyle.Success, "Szene erfolgreich ausgeführt");
+      showToast(ToastStyle.Success, "Scene executed successfully");
     } catch (error) {
-      showToast(ToastStyle.Failure, "Fehler beim Ausführen der Szene", (error as Error).message);
+      showToast(ToastStyle.Failure, "Error executing scene", (error as Error).message);
     }
   };
 
