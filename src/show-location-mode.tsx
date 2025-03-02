@@ -23,7 +23,7 @@ export default function ShowLocationMode() {
         });
       }
     } catch (error) {
-      console.error("Error fetching current mode:", error);
+      // console.error("Error fetching current mode:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Failed to fetch current mode",
@@ -71,7 +71,7 @@ export default function ShowLocationMode() {
         message: `Successfully switched to ${mode.name}`,
       });
     } catch (error) {
-      console.error("Error switching mode:", error);
+      // console.error("Error switching mode:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Failed to change mode",
