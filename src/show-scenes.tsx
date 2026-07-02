@@ -1,79 +1,59 @@
-import { List, showToast, ToastStyle, ActionPanel, getPreferenceValues } from "@raycast/api";
+import { List, showToast, Toast, ActionPanel, Action } from "@raycast/api";
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-interface Scene {
-  sceneId: string;
-  sceneName: string;
-  lastExecutedDate?: string;
-  // Fügen Sie hier weitere Eigenschaften hinzu, die eine Scene haben könnte
-}
-
-const preferences = getPreferenceValues();
-const SMARTTHINGS_API_TOKEN = preferences.apiToken; // Retrieve the API token from preferences
-const SMARTTHINGS_LOCATION_ID = preferences.locationId; // Retrieve the location ID from preferences
+import { fetchScenes, executeScene } from "./lib/smartthings";
+import { Scene } from "./types";
 
 export default function ShowScenes() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchScenes() {
+    async function loadScenes() {
       try {
-        const response = await axios.get(
-          `https://api.smartthings.com/v1/scenes?locationId=${SMARTTHINGS_LOCATION_ID}`,
-          {
-            headers: {
-              Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
-            },
-          }
-        );
-
-        console.log("Fetched Scenes Payload:", response.data); // Log the payload
-        const scenes: Scene[] = response.data.items;
-        setScenes(scenes);
-        setIsLoading(false);
+        const scenesData = await fetchScenes();
+        setScenes(scenesData);
       } catch (error) {
-        showToast(ToastStyle.Failure, "Failed to fetch scenes", (error as Error).message);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to fetch scenes",
+          message: (error as Error).message,
+        });
+      } finally {
         setIsLoading(false);
       }
     }
 
-    fetchScenes();
+    loadScenes();
   }, []);
 
-  const executeScene = async (sceneId: string) => {
+  const handleExecuteScene = async (sceneId: string) => {
     try {
-      await axios.post(`https://api.smartthings.com/v1/scenes/${sceneId}/execute`, null, {
-        headers: {
-          Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
-        },
-      });
-      showToast(ToastStyle.Success, "Scene executed successfully");
+      await executeScene(sceneId);
+      showToast({ style: Toast.Style.Success, title: "Scene executed successfully" });
     } catch (error) {
-      showToast(ToastStyle.Failure, "Error executing scene", (error as Error).message);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Error executing scene",
+        message: (error as Error).message,
+      });
     }
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: string | undefined) => {
     if (!timestamp) return "Never executed";
-    const date = new Date(timestamp);
-    return date.toLocaleString(); // Format the date as a readable string
+    return new Date(timestamp).toLocaleString();
   };
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search Scenes...">
-      {scenes.map((scene: any) => (
+      {scenes.map((scene) => (
         <List.Item
           key={scene.sceneId}
           title={scene.sceneName || "Unnamed Scene"}
-          accessoryTitle={`Last executed: ${formatDate(scene.lastExecutedDate)}`}
+          accessories={[{ text: `Last executed: ${formatDate(scene.lastExecutedDate)}` }]}
           actions={
             <ActionPanel>
-              <ActionPanel.Item
-                title="Execute Scene"
-                onAction={() => executeScene(scene.sceneId)}
-              />
+              <Action title="Execute Scene" onAction={() => handleExecuteScene(scene.sceneId)} />
             </ActionPanel>
           }
         />
@@ -81,7 +61,7 @@ export default function ShowScenes() {
       {scenes.length === 0 && !isLoading && (
         <List.Item
           title="No Scenes Found"
-          accessoryTitle="No scenes available for this location."
+          accessories={[{ text: "No scenes available for this location." }]}
         />
       )}
     </List>

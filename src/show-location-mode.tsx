@@ -1,6 +1,10 @@
 import { List, showToast, Toast, ActionPanel, Icon, Action, Color } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { fetchCurrentLocationMode, fetchLocationModes, switchLocationMode } from "./fetchDevices";
+import {
+  fetchCurrentLocationMode,
+  fetchLocationModes,
+  switchLocationMode,
+} from "./lib/smartthings";
 import { LocationMode } from "./types";
 
 export default function ShowLocationMode() {

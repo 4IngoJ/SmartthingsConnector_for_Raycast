@@ -9,7 +9,7 @@
     "Other"
   ],
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "commands": [
     {
       "name": "show-lights",
@@ -61,10 +61,17 @@
   ],
   "preferences": [
     {
-      "name": "apiToken",
-      "title": "SmartThings API Token",
+      "name": "clientId",
+      "title": "SmartThings Client ID",
+      "type": "textfield",
+      "description": "The Client ID of the OAuth app you registered in the SmartThings Developer Workspace",
+      "required": true
+    },
+    {
+      "name": "clientSecret",
+      "title": "SmartThings Client Secret",
       "type": "password",
-      "description": "Your SmartThings API Token",
+      "description": "The Client Secret of the OAuth app you registered in the SmartThings Developer Workspace",
       "required": true
     },
     {

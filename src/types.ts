@@ -11,6 +11,7 @@ export interface Device {
   id?: string;
   name?: string;
   roomId?: string;
+  roomName?: string;
   status?: {
     switch?: {
       switch?: {
@@ -29,33 +30,16 @@ export interface Device {
 export interface LocationMode {
   id: string;
   name: string;
+  label?: string;
 }
 
-export enum DeviceStatus {
-  ONLINE = "online",
-  OFFLINE = "offline",
-  UNKNOWN = "unknown",
+export interface Room {
+  roomId: string;
+  name: string;
 }
 
-// Add ApiDevice interface to handle raw API responses
-export interface ApiDevice {
-  deviceId: string;
-  label: string;
-  deviceTypeName?: string;
-  components?: Array<{
-    categories?: Array<{ name: string }>;
-  }>;
-  status?: {
-    switch?: {
-      switch?: {
-        value?: string;
-        timestamp?: string;
-      };
-    };
-    switchLevel?: {
-      level?: {
-        value?: number;
-      };
-    };
-  };
+export interface Scene {
+  sceneId: string;
+  sceneName: string;
+  lastExecutedDate?: string;
 }

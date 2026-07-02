@@ -5,24 +5,21 @@ import {
   fetchLocationModes,
   switchLocationMode,
   fetchDevices,
-} from "./fetchDevices";
-import { toggleLight, setLightLevel } from "./toggleLight";
-import { LocationMode } from "./types";
-import axios from "axios";
+  fetchScenes,
+  executeScene,
+  toggleLight,
+  setLightLevel,
+} from "./lib/smartthings";
+import { LocationMode, Scene } from "./types";
 
 // Fixed 1 minute refresh interval
 const REFRESH_INTERVAL_MS = 60000;
 
 interface Preferences {
   enableBackgroundRefresh: boolean;
-  apiToken: string;
+  clientId: string;
+  clientSecret: string;
   locationId: string;
-}
-
-interface Scene {
-  sceneId: string;
-  sceneName: string;
-  lastExecutedDate?: string;
 }
 
 interface Device {
@@ -149,47 +146,31 @@ export default function Command() {
   // Fetch scenes from SmartThings API
   const loadScenes = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `https://api.smartthings.com/v1/scenes?locationId=${preferences.locationId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${preferences.apiToken}`,
-          },
-        }
-      );
-
-      console.log("Fetched Scenes:", response.data);
-      setScenes(response.data.items);
+      const scenesData = await fetchScenes();
+      setScenes(scenesData);
     } catch (error) {
       console.error("Failed to load scenes:", error);
     }
-  }, [preferences.apiToken, preferences.locationId]);
+  }, []);
 
   // Execute a scene
-  const handleSceneExecution = useCallback(
-    async (sceneId: string, sceneName: string) => {
-      try {
-        await axios.post(`https://api.smartthings.com/v1/scenes/${sceneId}/execute`, null, {
-          headers: {
-            Authorization: `Bearer ${preferences.apiToken}`,
-          },
-        });
-        showToast({
-          style: Toast.Style.Success,
-          title: "Scene Activated",
-          message: `Successfully executed ${sceneName}`,
-        });
-      } catch (error) {
-        console.error("Failed to execute scene:", error);
-        showToast({
-          style: Toast.Style.Failure,
-          title: "Failed to Execute Scene",
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    },
-    [preferences.apiToken]
-  );
+  const handleSceneExecution = useCallback(async (sceneId: string, sceneName: string) => {
+    try {
+      await executeScene(sceneId);
+      showToast({
+        style: Toast.Style.Success,
+        title: "Scene Activated",
+        message: `Successfully executed ${sceneName}`,
+      });
+    } catch (error) {
+      console.error("Failed to execute scene:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to Execute Scene",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }, []);
 
   // Load lights from SmartThings API
   const loadLights = useCallback(async () => {

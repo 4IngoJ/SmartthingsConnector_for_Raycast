@@ -1,57 +1,9 @@
-import {
-  List,
-  showToast,
-  ToastStyle,
-  ActionPanel,
-  CopyToClipboardAction,
-  Icon,
-  Color,
-} from "@raycast/api";
+import { List, showToast, Toast, ActionPanel, Action, Icon, Color } from "@raycast/api";
 import { useEffect, useState, useCallback } from "react";
-import { fetchDevices } from "./fetchDevices";
-import { fetchRooms } from "./fetchRooms";
-import { toggleLight, setLightLevel } from "./toggleLight";
+import { fetchDevices, fetchRooms, toggleLight, setLightLevel } from "./lib/smartthings";
+import { Device } from "./types";
 
-interface DeviceStatus {
-  switch: {
-    switch?: {
-      timestamp?: string;
-      value?: string;
-    };
-  };
-  switchLevel?: {
-    level?: {
-      value?: number;
-    };
-  };
-}
-
-interface ApiDevice {
-  deviceId: string;
-  label: string | undefined;
-  roomId: string;
-  components: Array<{ categories: Array<{ name: string }> }>;
-  status?: DeviceStatus;
-  deviceTypeName: string;
-  id: string;
-  name: string;
-}
-
-interface Device {
-  deviceId: string;
-  label: string;
-  roomId: string;
-  components: Array<{ categories: Array<{ name: string }> }>;
-  status?: DeviceStatus;
-  deviceTypeName: string;
-  id: string;
-  name: string;
-}
-
-interface Room {
-  roomId: string;
-  name: string;
-}
+const BRIGHTNESS_LEVELS = [100, 75, 50, 25, 10];
 
 export default function Command() {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -64,38 +16,25 @@ export default function Command() {
     try {
       const [roomsData, devicesData] = await Promise.all([fetchRooms(), fetchDevices()]);
 
-      const roomsMap = roomsData.reduce((acc: { [key: string]: string }, room: Room) => {
+      const roomsMap = roomsData.reduce((acc: { [key: string]: string }, room) => {
         acc[room.roomId] = room.name;
         return acc;
       }, {});
       setRooms(roomsMap);
 
-      const lightDevices: Device[] = (devicesData as unknown as ApiDevice[])
-        .filter((device): device is Device => {
-          return !!(
-            typeof device.deviceId === "string" &&
-            typeof device.label === "string" &&
-            device.roomId &&
-            device.components &&
-            Array.isArray(device.components) &&
-            device.components.some(
-              (component) =>
-                component.categories &&
-                Array.isArray(component.categories) &&
-                component.categories.some((category) => category.name === "Light")
-            )
-          );
-        })
-        .map((device) => ({
-          ...device,
-          label: device.label as string,
-        }));
+      const lightDevices = devicesData.filter(
+        (device) =>
+          !!device.roomId &&
+          device.components?.some((component) =>
+            component.categories?.some((category) => category.name === "Light")
+          )
+      );
 
       setDevices(lightDevices);
       setFilteredDevices(lightDevices);
     } catch (error) {
       showToast({
-        style: ToastStyle.Failure, // ToastStyle statt Toast.Style
+        style: Toast.Style.Failure,
         title: "Failed to fetch data",
         message: (error as Error).message,
       });
@@ -113,10 +52,9 @@ export default function Command() {
       setFilteredDevices(devices);
     } else {
       const filtered = devices.filter(
-        (device: Device) =>
+        (device) =>
           device.label.toLowerCase().includes(searchText.toLowerCase()) ||
-          (rooms[device.roomId] &&
-            rooms[device.roomId].toLowerCase().includes(searchText.toLowerCase()))
+          (device.roomId && rooms[device.roomId]?.toLowerCase().includes(searchText.toLowerCase()))
       );
       setFilteredDevices(filtered);
     }
@@ -126,45 +64,71 @@ export default function Command() {
     if (device.status?.switch?.switch?.value === "on") {
       return { source: Icon.LightBulb, tintColor: Color.Green };
     }
-    return Icon.LightBulb;
+    return { source: Icon.LightBulb };
   }, []);
 
   const handleToggleLight = useCallback(async (device: Device) => {
-    if (device.status?.switch?.switch?.value) {
-      const currentStatus = device.status.switch.switch.value;
-      try {
-        const newStatus = await toggleLight(device.deviceId, currentStatus);
-        setDevices((prevDevices) =>
-          prevDevices.map((d) =>
-            d.deviceId === device.deviceId
-              ? {
-                  ...d,
-                  status: {
-                    ...d.status,
-                    switch: {
-                      ...d.status?.switch,
-                      switch: { ...d.status?.switch?.switch, value: newStatus },
-                    },
+    const currentStatus = device.status?.switch?.switch?.value;
+    if (!currentStatus) return;
+
+    try {
+      const newStatus = await toggleLight(device.deviceId, currentStatus);
+      setDevices((prevDevices) =>
+        prevDevices.map((d) =>
+          d.deviceId === device.deviceId
+            ? {
+                ...d,
+                status: {
+                  ...d.status,
+                  switch: {
+                    ...d.status?.switch,
+                    switch: { ...d.status?.switch?.switch, value: newStatus },
                   },
-                }
-              : d
-          )
-        );
-      } catch (error) {
-        showToast(
-          ToastStyle.Failure,
-          "Fehler beim Umschalten des Lichts",
-          (error as Error).message
-        );
-      }
+                },
+              }
+            : d
+        )
+      );
+    } catch (error) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Fehler beim Umschalten des Lichts",
+        message: (error as Error).message,
+      });
+    }
+  }, []);
+
+  const handleBrightnessChange = useCallback(async (device: Device, level: number) => {
+    try {
+      await setLightLevel(device.deviceId, level);
+      setDevices((prevDevices) =>
+        prevDevices.map((d) =>
+          d.deviceId === device.deviceId
+            ? {
+                ...d,
+                status: {
+                  switch: { switch: { value: "on" } },
+                  switchLevel: { level: { value: level } },
+                },
+              }
+            : d
+        )
+      );
+      await showToast({ style: Toast.Style.Success, title: `Brightness set to ${level}%` });
+    } catch (error) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to set brightness",
+        message: (error as Error).message,
+      });
     }
   }, []);
 
   const getDetailMarkdown = useCallback((device: Device) => {
     const switchStatus = device.status?.switch?.switch?.value || "unknown";
     const timestamp = device.status?.switch?.switch?.timestamp || "N/A";
-    const level = device.status?.switchLevel?.level?.value || "N/A";
-    const levelPercentage = level !== "N/A" ? `${level}%` : level;
+    const level = device.status?.switchLevel?.level?.value;
+    const levelPercentage = level !== undefined ? `${level}%` : "N/A";
 
     return `## Device Status\n
 ---
@@ -184,15 +148,15 @@ export default function Command() {
       onSearchTextChange={setSearchText}
       isShowingDetail
     >
-      {filteredDevices.map((device: Device) => (
+      {filteredDevices.map((device) => (
         <List.Item
           key={device.deviceId}
           title={device.label}
-          subtitle={rooms[device.roomId] || "Unknown Room"}
+          subtitle={(device.roomId && rooms[device.roomId]) || "Unknown Room"}
           actions={
             <ActionPanel>
               <ActionPanel.Section>
-                <ActionPanel.Item
+                <Action
                   title="Toggle Light"
                   icon={Icon.Power}
                   onAction={() => handleToggleLight(device)}
@@ -203,166 +167,18 @@ export default function Command() {
                     icon={Icon.LightBulb}
                     shortcut={{ modifiers: ["cmd"], key: "b" }}
                   >
-                    <ActionPanel.Item
-                      title="100% Brightness"
-                      onAction={async () => {
-                        try {
-                          await setLightLevel(device.deviceId, 100);
-                          setDevices((prevDevices) =>
-                            prevDevices.map((d) =>
-                              d.deviceId === device.deviceId
-                                ? {
-                                    ...d,
-                                    status: {
-                                      ...d.status,
-                                      switch: {
-                                        switch: { value: "on" },
-                                      },
-                                      switchLevel: { level: { value: 100 } },
-                                    },
-                                  }
-                                : d
-                            )
-                          );
-                          await showToast(ToastStyle.Success, "Brightness set to 100%");
-                        } catch (error) {
-                          showToast(
-                            ToastStyle.Failure,
-                            "Failed to set brightness",
-                            (error as Error).message
-                          );
-                        }
-                      }}
-                    />
-                    <ActionPanel.Item
-                      title="75% Brightness"
-                      onAction={async () => {
-                        try {
-                          await setLightLevel(device.deviceId, 75);
-                          setDevices((prevDevices) =>
-                            prevDevices.map((d) =>
-                              d.deviceId === device.deviceId
-                                ? {
-                                    ...d,
-                                    status: {
-                                      ...d.status,
-                                      switch: {
-                                        switch: { value: "on" },
-                                      },
-                                      switchLevel: { level: { value: 75 } },
-                                    },
-                                  }
-                                : d
-                            )
-                          );
-                          await showToast(ToastStyle.Success, "Brightness set to 75%");
-                        } catch (error) {
-                          showToast(
-                            ToastStyle.Failure,
-                            "Failed to set brightness",
-                            (error as Error).message
-                          );
-                        }
-                      }}
-                    />
-                    <ActionPanel.Item
-                      title="50% Brightness"
-                      onAction={async () => {
-                        try {
-                          await setLightLevel(device.deviceId, 50);
-                          setDevices((prevDevices) =>
-                            prevDevices.map((d) =>
-                              d.deviceId === device.deviceId
-                                ? {
-                                    ...d,
-                                    status: {
-                                      ...d.status,
-                                      switch: {
-                                        switch: { value: "on" },
-                                      },
-                                      switchLevel: { level: { value: 50 } },
-                                    },
-                                  }
-                                : d
-                            )
-                          );
-                          await showToast(ToastStyle.Success, "Brightness set to 50%");
-                        } catch (error) {
-                          showToast(
-                            ToastStyle.Failure,
-                            "Failed to set brightness",
-                            (error as Error).message
-                          );
-                        }
-                      }}
-                    />
-                    <ActionPanel.Item
-                      title="25% Brightness"
-                      onAction={async () => {
-                        try {
-                          await setLightLevel(device.deviceId, 25);
-                          setDevices((prevDevices) =>
-                            prevDevices.map((d) =>
-                              d.deviceId === device.deviceId
-                                ? {
-                                    ...d,
-                                    status: {
-                                      ...d.status,
-                                      switch: {
-                                        switch: { value: "on" },
-                                      },
-                                      switchLevel: { level: { value: 25 } },
-                                    },
-                                  }
-                                : d
-                            )
-                          );
-                          await showToast(ToastStyle.Success, "Brightness set to 25%");
-                        } catch (error) {
-                          showToast(
-                            ToastStyle.Failure,
-                            "Failed to set brightness",
-                            (error as Error).message
-                          );
-                        }
-                      }}
-                    />
-                    <ActionPanel.Item
-                      title="10% Brightness"
-                      onAction={async () => {
-                        try {
-                          await setLightLevel(device.deviceId, 10);
-                          setDevices((prevDevices) =>
-                            prevDevices.map((d) =>
-                              d.deviceId === device.deviceId
-                                ? {
-                                    ...d,
-                                    status: {
-                                      ...d.status,
-                                      switch: {
-                                        switch: { value: "on" },
-                                      },
-                                      switchLevel: { level: { value: 10 } },
-                                    },
-                                  }
-                                : d
-                            )
-                          );
-                          await showToast(ToastStyle.Success, "Brightness set to 10%");
-                        } catch (error) {
-                          showToast(
-                            ToastStyle.Failure,
-                            "Failed to set brightness",
-                            (error as Error).message
-                          );
-                        }
-                      }}
-                    />
+                    {BRIGHTNESS_LEVELS.map((level) => (
+                      <Action
+                        key={level}
+                        title={`${level}% Brightness`}
+                        onAction={() => handleBrightnessChange(device, level)}
+                      />
+                    ))}
                   </ActionPanel.Submenu>
                 )}
               </ActionPanel.Section>
               <ActionPanel.Section>
-                <CopyToClipboardAction
+                <Action.CopyToClipboard
                   title="Copy Device Info"
                   content={JSON.stringify(device, null, 2)}
                 />
@@ -370,7 +186,7 @@ export default function Command() {
             </ActionPanel>
           }
           detail={<List.Item.Detail markdown={getDetailMarkdown(device)} />}
-          accessoryIcon={getStatusIcon(device)}
+          accessories={[{ icon: getStatusIcon(device) }]}
         />
       ))}
     </List>

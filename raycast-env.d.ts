@@ -8,8 +8,10 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** SmartThings API Token - Your SmartThings API Token */
-  "apiToken": string,
+  /** SmartThings Client ID - The Client ID of the OAuth app you registered in the SmartThings Developer Workspace */
+  "clientId": string,
+  /** SmartThings Client Secret - The Client Secret of the OAuth app you registered in the SmartThings Developer Workspace */
+  "clientSecret": string,
   /** SmartThings Location ID - Your SmartThings Location ID */
   "locationId": string
 }
