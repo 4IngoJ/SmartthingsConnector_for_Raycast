@@ -8,56 +8,57 @@ Welcome to the SmartThings Raycast Extension! This extension allows you to inter
 - Execute scenes
 - Toggle device status (e.g., lights, switches)
 - View detailed device information
+- Menu bar monitor for the current location mode
+
+## Authentication: why OAuth2 instead of an API token
+
+Samsung changed how the SmartThings API can be accessed: Personal Access Tokens (PAT) created after **30 Dec 2024** now expire after **24 hours**, and PATs are officially considered a short-lived, testing-only mechanism. For a tool you want to keep working, Samsung recommends OAuth2 instead ([announcement](https://community.smartthings.com/t/changes-to-personal-access-tokens-pat/292019)).
+
+This extension therefore uses SmartThings' OAuth2 flow (via Raycast's built-in OAuth support). You log in once through the browser; the extension then silently refreshes your access token in the background, so you never have to manually regenerate a token again.
+
+The trade-off: SmartThings' OAuth app registration requires a `clientId` **and** `clientSecret` (it does not support secret-less PKCE-only clients), so — unlike a typical "sign in with Google" flow — each user of this extension needs to register their own small OAuth app in the SmartThings Developer Workspace and paste the resulting credentials into the extension preferences. It only takes a few minutes and only has to be done once.
 
 ## Requirements
 
-Before using this extension, ensure you have the following:
-
-- Raycast installed on your macOS system.
-- SmartThings API key for authentication.
-- SmartThings location ID for targeting specific smart home locations.
+- Raycast installed on macOS.
+- A Samsung account with at least one SmartThings location.
+- Your own OAuth app registered in the SmartThings Developer Workspace (see below).
 
 ## Getting Started
 
-### Obtain SmartThings API Key
+### 1. Register an OAuth app in the SmartThings Developer Workspace
 
-To use this extension, you'll need to obtain an API key from SmartThings. Follow these steps:
+1. Go to the [SmartThings Developer Workspace](https://developer.smartthings.com) and sign in with your Samsung account.
+2. Create a new project and choose the **Automation for the SmartThings App** / **API-Only** app type (the option for personal/API integrations, not a published SmartApp).
+3. In the app's **OAuth** settings, set the redirect URI to:
+   ```
+   https://raycast.com/redirect?packageName=Extension
+   ```
+   This is a static URL used by all Raycast extensions — do not substitute anything in it.
+4. Add the following OAuth scopes (needed for the commands in this extension):
+   ```
+   r:devices:* x:devices:* r:locations:* w:locations:* r:scenes:* x:scenes:*
+   ```
+5. Save the app. SmartThings will show you a **Client ID** and **Client Secret** — copy both immediately, the secret is only shown once. If you lose it, you can generate a new one from the app's settings.
 
-1. **Log in to SmartThings**: Go to the [SmartThings Developer Workspace](https://account.smartthings.com/tokens) and sign in with your Samsung account.
+### 2. Find your SmartThings Location ID
 
-2. **Create a new API token**: Navigate to the "My SmartApps" section and select your app or create a new one. Generate an API token from the "OAuth" section of your app's settings.
+1. Go to [my.smartthings.com/advanced/locations](https://my.smartthings.com/advanced/locations) and sign in.
+2. Select the location you want this extension to control.
+3. Copy the location ID from the URL or the location details.
 
-3. **Copy the API token**: Once generated, copy the API token. This will be used to authenticate requests from the Raycast extension.
+### 3. Configure the extension preferences
 
-### Obtain SmartThings Location ID
+1. Open Raycast, type `Extensions`, and search for **SmartThings Connector**.
+2. Enter the **SmartThings Client ID** and **SmartThings Client Secret** from step 1.
+3. Enter the **SmartThings Location ID** from step 2.
+4. Run any command (e.g. **Show Lights**). Raycast will open a browser window asking you to log in to SmartThings and approve the requested scopes. After approving, you're redirected back to Raycast and the extension is ready to use.
 
-Each location (e.g., home, office) in SmartThings has a unique location ID. Follow these steps to find the location ID:
+You can revoke access at any time from the extension's preferences (a **Logout** option appears automatically once you're signed in) or from your [SmartThings account settings](https://account.smartthings.com).
 
-1. **Log in to SmartThings**: Go to the [My SmartThings website](https://my.smartthings.com/advanced/locations) and log in with your Samsung account.
+### Known limitation
 
-2. **Find your location**: Navigate to the "Devices" or "Settings" section and select the location you want to manage with this extension.
-
-3. **Retrieve the location ID**: Look for the location ID in the URL or in the settings of your selected location. It typically appears as a string of alphanumeric characters.
-
-Certainly! Here's an updated version for the README section on setting preferences using the Raycast extension UI:
-
----
-
-## Set Preferences
-
-To configure the SmartThings API token (`apiToken`) and location ID (`locationId`) within the Raycast extension UI, follow these steps:
-
-1. **Open Raycast**: Launch Raycast on your macOS system.
-
-2. **Access Preferences**: Type `Extensions` into the Raycast command bar and search for "SmartThings Connector" in the list.
-
-3. **Enter API Token**: In the preferences window, enter your SmartThings API token (`apiToken`). This token is required for authenticating API requests to SmartThings.
-
-4. **Enter Location ID**: Enter your SmartThings location ID (`locationId`). This ID specifies the SmartThings location you want to interact with using the extension.
-
-5. **Save**: The Changes are saved automatically.
-
-Now, the extension is configured to use your specified API token and location ID for seamless interaction with your SmartThings devices and scenes.
+SmartThings has historically had bugs where OAuth app tokens (as opposed to PATs) couldn't change the current location mode (`PUT /locations/{id}/modes/current`). If **Show Location Mode** or the menu bar's mode switcher fails specifically when *switching* (but reading works fine), this is a platform-side limitation, not a bug in the extension — check the [SmartThings Community](https://community.smartthings.com) for the current status.
 
 ## Feedback
 

@@ -1,14 +1,7 @@
-import {
-  Grid,
-  showToast,
-  ToastStyle,
-  ActionPanel,
-  useNavigation,
-  getPreferenceValues,
-} from "@raycast/api";
+import { Grid, showToast, Toast, ActionPanel, Action, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { Device, DeviceCategory } from "./types"; // Erstellen Sie diese Datei mit den entsprechenden Typdefinitionen
+import { fetchDevices } from "./lib/smartthings";
+import { Device, DeviceCategory } from "./types";
 
 const ICON_URLS = {
   switch: "https://api.iconify.design/material-symbols/switch.svg",
@@ -26,146 +19,107 @@ const ICON_URLS = {
   other: "https://api.iconify.design/material-symbols-light/devices-other-rounded.svg",
 };
 
-// Funktion, um die Icon-URL basierend auf der Kategorie und Größe zu erhalten
 const getIconUrl = (category: DeviceCategory, size = 1): string => {
-  if (!category) {
-    console.warn("Category is undefined or null");
-    return ICON_URLS["other"];
-  }
+  const lowerCategory = (category || "").toLowerCase() as keyof typeof ICON_URLS;
+  const iconUrl = ICON_URLS[lowerCategory] || ICON_URLS.other;
+  return `${iconUrl}?size=${size * 100}%`;
+};
 
-  const lowerCategory: keyof typeof ICON_URLS = category.toLowerCase() as keyof typeof ICON_URLS;
-  const iconUrl = ICON_URLS[lowerCategory] || ICON_URLS["other"];
+const getTimestamp = (device: Device): string => {
+  return device.components?.[0]?.capabilities?.[0]?.timestamp || "";
+};
 
-  // Abfrageparameter anhängen, um das Bild zu skalieren
-  const scaledUrl = `${iconUrl}?size=${size * 100}%`;
+const categorizeDevices = (devices: Device[]): Record<DeviceCategory, Device[]> => {
+  const categorized: Record<DeviceCategory, Device[]> = {};
 
-  console.log(`Icon URL for category '${category}': ${scaledUrl}`);
+  devices.forEach((device) => {
+    device.components?.forEach((component) => {
+      component.categories?.forEach((category) => {
+        if (!categorized[category.name]) {
+          categorized[category.name] = [];
+        }
+        categorized[category.name].push(device);
+      });
+    });
+  });
 
-  return scaledUrl;
+  return categorized;
 };
 
 export default function ShowAllDevices() {
   const [devices, setDevices] = useState<Record<DeviceCategory, Device[]>>({});
   const [filteredDevices, setFilteredDevices] = useState<Record<DeviceCategory, Device[]>>({});
   const [isLoading, setIsLoading] = useState(true);
-  // Entfernen Sie die nicht verwendete Variable searchText
-  // const [searchText, setSearchText] = useState("");
   const { push } = useNavigation();
 
   useEffect(() => {
-    async function fetchDevices() {
+    async function loadDevices() {
       try {
-        const preferences = getPreferenceValues();
-        const SMARTTHINGS_API_TOKEN = preferences.apiToken; // Retrieve the API token from preferences
-        // Entfernen Sie die nicht verwendete Variable SMARTTHINGS_LOCATION_ID
+        const devicesData = await fetchDevices();
 
-        const response = await axios.get(`https://api.smartthings.com/v1/devices`, {
-          headers: {
-            Authorization: `Bearer ${SMARTTHINGS_API_TOKEN}`,
-          },
-        });
+        devicesData.sort((a, b) => getTimestamp(b).localeCompare(getTimestamp(a)));
 
-        const devicesData: Device[] = response.data.items;
-
-        // Sort devices by the last updated timestamp in descending order
-        devicesData.sort((a: Device, b: Device) => {
-          const aTimestamp = getTimestamp(a);
-          const bTimestamp = getTimestamp(b);
-          return bTimestamp - aTimestamp;
-        });
-
-        // Categorize devices into groups based on categories
         const categorizedDevices = categorizeDevices(devicesData);
-
-        // Sort categories based on the latest update date of devices within each category
         const sortedCategories = Object.keys(categorizedDevices).sort((categoryA, categoryB) => {
-          const latestDeviceA = categorizedDevices[categoryA as DeviceCategory][0];
-          const latestDeviceB = categorizedDevices[categoryB as DeviceCategory][0];
+          const latestDeviceA = categorizedDevices[categoryA][0];
+          const latestDeviceB = categorizedDevices[categoryB][0];
           if (!latestDeviceA || !latestDeviceB) return 0;
-          const timestampA = getTimestamp(latestDeviceA);
-          const timestampB = getTimestamp(latestDeviceB);
-          return timestampB - timestampA;
+          return getTimestamp(latestDeviceB).localeCompare(getTimestamp(latestDeviceA));
         });
 
-        // Prepare sorted categorized devices
-        const sortedDevices: { [key: string]: any[] } = {}; // Add type annotation
-
-        sortedCategories.forEach((category: string) => {
-          sortedDevices[category] = (categorizedDevices as { [key: string]: any[] })[category];
+        const sortedDevices: Record<DeviceCategory, Device[]> = {};
+        sortedCategories.forEach((category) => {
+          sortedDevices[category] = categorizedDevices[category];
         });
 
-        setDevices(sortedDevices as any);
-        setFilteredDevices(sortedDevices as any);
-        setIsLoading(false);
+        setDevices(sortedDevices);
+        setFilteredDevices(sortedDevices);
       } catch (error) {
-        showToast(ToastStyle.Failure, "Failed to fetch devices", (error as Error).message);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to fetch devices",
+          message: (error as Error).message,
+        });
+      } finally {
         setIsLoading(false);
       }
     }
 
-    fetchDevices();
-  }, []); // Empty dependency array ensures this effect runs only once after initial render
+    loadDevices();
+  }, []);
 
-  // Function to categorize devices based on their categories
-  const categorizeDevices = (devices: Device[]): Record<DeviceCategory, Device[]> => {
-    const categorized = {};
-
-    devices.forEach((device: Device) => {
-      if (device.components) {
-        device.components.forEach((component: any) => {
-          component.categories.forEach((category: any) => {
-            if (!(category.name in categorized)) {
-              (categorized as { [key: string]: any[] })[category.name] = [];
-            }
-            (categorized as { [key: string]: any[] })[category.name].push(device);
-          });
-        });
-      }
-    });
-
-    return categorized;
-  };
-
-  // Function to filter devices based on search text
-  const filterDevices = (text: string): void => {
+  const handleSearchTextChange = (text: string): void => {
     if (!text.trim()) {
       setFilteredDevices(devices);
       return;
     }
 
     const lowerText = text.trim().toLowerCase();
-    const filtered = {};
+    const filtered: Record<DeviceCategory, Device[]> = {};
 
-    Object.keys(devices).forEach((category: string) => {
+    Object.keys(devices).forEach((category) => {
       const filteredCategoryDevices = devices[category].filter(
-        (device: Device) =>
-          (device.label && device.label.toLowerCase().includes(lowerText)) ||
-          device.components?.some((component: any) =>
-            component.categories?.some((category: any) =>
+        (device) =>
+          device.label?.toLowerCase().includes(lowerText) ||
+          device.components?.some((component) =>
+            component.categories?.some((category) =>
               category.name.toLowerCase().includes(lowerText)
             )
           )
       );
 
       if (filteredCategoryDevices.length > 0) {
-        (filtered as { [key: string]: any[] })[category] = filteredCategoryDevices;
+        filtered[category] = filteredCategoryDevices;
       }
     });
 
-    setFilteredDevices(filtered as any);
+    setFilteredDevices(filtered);
   };
 
-  // Aktualisieren Sie die handleSearchTextChange Funktion
-  const handleSearchTextChange = (text: string): void => {
-    // Entfernen Sie setSearchText(text);
-    filterDevices(text);
-  };
-
-  // Function to handle device selection and navigation
   const handleDeviceSelection = (deviceId: string): void => {
     const device = Object.values(devices)
       .flat()
-      .find((device: Device) => device.deviceId === deviceId);
+      .find((device) => device.deviceId === deviceId);
     if (device) {
       push(<DeviceDetail device={device} />);
     }
@@ -181,15 +135,15 @@ export default function ShowAllDevices() {
     >
       {Object.entries(filteredDevices).map(([category, categoryDevices]) => (
         <Grid.Section key={category} title={category}>
-          {categoryDevices.map((device: Device) => (
+          {categoryDevices.map((device) => (
             <Grid.Item
               key={device.deviceId}
               title={device.label || "Unnamed Device"}
               subtitle={device.deviceTypeName}
-              content={{ source: getIconUrl(device.deviceTypeName || "default", 0.75) }} // Scale the icon to 75% of original size
+              content={{ source: getIconUrl(device.deviceTypeName || "default", 0.75) }}
               actions={
                 <ActionPanel>
-                  <ActionPanel.Item
+                  <Action
                     title="Show Details"
                     onAction={() => handleDeviceSelection(device.deviceId)}
                   />
@@ -202,9 +156,7 @@ export default function ShowAllDevices() {
       {Object.keys(filteredDevices).length === 0 && !isLoading && (
         <Grid.Item
           title="No Devices Found"
-          content={{
-            source: "https://api.iconify.design/material-symbols/lightbulb.svg",
-          }} // Custom icon URL for "No Devices Found"
+          content={{ source: "https://api.iconify.design/material-symbols/lightbulb.svg" }}
           subtitle="No devices match your search."
         />
       )}
@@ -212,29 +164,16 @@ export default function ShowAllDevices() {
   );
 }
 
-// Komponente zum Anzeigen der Gerätedetails
-function DetailComponent({ device }: { device: Device }) {
-  return (
-    <Grid.Item
-      title={device.label || "Unnamed Device"}
-      subtitle={device.deviceTypeName}
-      content={{ source: getIconUrl(device.deviceTypeName || "default", 0.75) }} // Icon für Detailansicht hinzufügen
-    />
-  );
-}
-
-// Komponente zum Rendern der Gerätedetailansicht
 function DeviceDetail({ device }: { device: Device }) {
   return (
     <Grid>
       <Grid.Section>
-        <DetailComponent device={device} />
+        <Grid.Item
+          title={device.label || "Unnamed Device"}
+          subtitle={device.deviceTypeName}
+          content={{ source: getIconUrl(device.deviceTypeName || "default", 0.75) }}
+        />
       </Grid.Section>
     </Grid>
   );
 }
-
-// Fix timestamp comparison
-const getTimestamp = (device: any) => {
-  return device?.components?.[0]?.capabilities?.[0]?.timestamp || "";
-};

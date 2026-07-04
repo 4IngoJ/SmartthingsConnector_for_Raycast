@@ -1,20 +1,7 @@
-import { List, showToast, ToastStyle, ActionPanel, CopyToClipboardAction } from "@raycast/api";
+import { List, showToast, Toast, ActionPanel, Action } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { fetchRooms, fetchDevicesInRoom } from "./fetchRooms";
-
-// Am Anfang der Datei fügen Sie diese Interfaces hinzu:
-interface Room {
-  roomId: string;
-  name: string;
-  // Fügen Sie hier weitere Eigenschaften hinzu, die ein Room haben könnte
-}
-
-interface Device {
-  deviceId: string;
-  label: string;
-  roomId: string;
-  // Fügen Sie hier weitere Eigenschaften hinzu, die ein Device haben könnte
-}
+import { fetchRooms, fetchDevicesInRoom } from "./lib/smartthings";
+import { Device, Room } from "./types";
 
 export default function ShowRooms() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -28,13 +15,16 @@ export default function ShowRooms() {
         const roomsData = await fetchRooms();
         setRooms(roomsData);
 
-        // Fetch devices for all rooms
-        const devicePromises = roomsData.map((room: Room) => fetchDevicesInRoom(room.roomId));
+        const devicePromises = roomsData.map((room) => fetchDevicesInRoom(room.roomId));
         const devicesData = await Promise.all(devicePromises);
-        setDevices(devicesData.flat() as Device[]);
-        setIsLoading(false);
+        setDevices(devicesData.flat());
       } catch (error) {
-        showToast(ToastStyle.Failure, "Failed to fetch data", (error as Error).message);
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to fetch data",
+          message: (error as Error).message,
+        });
+      } finally {
         setIsLoading(false);
       }
     }
@@ -49,35 +39,37 @@ export default function ShowRooms() {
       isShowingDetail
     >
       {rooms
-        .filter((room: Room) => room.name.toLowerCase().includes(searchText.toLowerCase()))
-        .map((room: Room) => (
-          <List.Item
-            key={room.roomId}
-            id={room.roomId}
-            title={room.name}
-            actions={
-              <ActionPanel>
-                <CopyToClipboardAction
-                  title="Copy Room Info"
-                  content={JSON.stringify(room, null, 2)}
+        .filter((room) => room.name.toLowerCase().includes(searchText.toLowerCase()))
+        .map((room) => {
+          const roomDevices = devices.filter((device) => device.roomId === room.roomId);
+          return (
+            <List.Item
+              key={room.roomId}
+              id={room.roomId}
+              title={room.name}
+              actions={
+                <ActionPanel>
+                  <Action.CopyToClipboard
+                    title="Copy Room Info"
+                    content={JSON.stringify(room, null, 2)}
+                  />
+                </ActionPanel>
+              }
+              detail={
+                <List.Item.Detail
+                  markdown={
+                    roomDevices.length > 0
+                      ? `### Devices in ${room.name}\n${roomDevices
+                          .map((device) => `- ${device.label}`)
+                          .join("\n")}`
+                      : "No devices found"
+                  }
                 />
-              </ActionPanel>
-            }
-            detail={
-              <List.Item.Detail
-                markdown={
-                  devices.length > 0
-                    ? `### Devices in ${room.name}\n${devices
-                        .filter((device: Device) => device.roomId === room.roomId)
-                        .map((device: Device) => `- ${device.label}`)
-                        .join("\n")}`
-                    : "No devices found"
-                }
-              />
-            }
-            accessoryTitle={`${devices.filter((device: Device) => device.roomId === room.roomId).length} Devices`}
-          />
-        ))}
+              }
+              accessories={[{ text: `${roomDevices.length} Devices` }]}
+            />
+          );
+        })}
     </List>
   );
 }
